@@ -18,6 +18,12 @@ function defaultApiUrl() {
 
 export const API_URL = process.env.EXPO_PUBLIC_API_URL || defaultApiUrl();
 
+// Called when a signed-in request is rejected with 401 (expired or invalid session).
+let unauthorizedHandler = null;
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler;
+}
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -61,6 +67,9 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
   }
 
   if (!response.ok) {
+    if (response.status === 401 && token && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
     throw new ApiError(
       data?.message || 'Something went wrong. Please try again.',
       response.status

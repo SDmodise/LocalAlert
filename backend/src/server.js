@@ -8,8 +8,6 @@ require("dotenv").config();
 const app = require("./app");
 const pool = require("./config/database");
 
-console.log("Pool object:", pool);
-
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {
@@ -18,7 +16,7 @@ async function startServer() {
         console.log("Connected to PostgreSQL");
     
         app.listen(PORT, () => {
-            console.error(`Server is running on port ${PORT}`);
+            console.log(`Server is running on port ${PORT}`);
         });
     } catch (error) {
         console.error("Database connection failed");
