@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    "expo-asset",
+    [
+      "expo-location",
+      {
+        "locationWhenInUsePermission": "LocalAlert uses your location to find your municipality so you receive alerts for people missing near you. Only the municipality is saved."
+      }
+    ],
+    [
+      "expo-image-picker",
+      {
+        "cameraPermission": "LocalAlert uses the camera to take photos for family profiles and sighting reports.",
+        "photosPermission": "LocalAlert uses your photos to add pictures to family profiles and sighting reports."
+      }
+    ]
+  ]
+}

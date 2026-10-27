@@ -24,3 +24,5 @@ venv/
 
 .DS_Store
 Thumbs.db
+# Uploaded photos and ID documents (personal information)
+backend/uploads/

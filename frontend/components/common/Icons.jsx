@@ -98,3 +98,37 @@ export function ProfileTabIcon({ size = 24, active }) {
     </Svg>
   );
 }
+
+export function PlusIcon({ size = 20, color = colors.blue }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 5v14M5 12h14" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function CameraIcon({ size = 30, color = colors.blue }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M6 5h12a3 3 0 013 3v8a3 3 0 01-3 3H6a3 3 0 01-3-3V8a3 3 0 013-3z" stroke={color} strokeWidth={2} />
+      <Circle cx="12" cy="12" r="3.2" stroke={color} strokeWidth={2} />
+    </Svg>
+  );
+}
+
+export function UploadIcon({ size = 20, color = colors.blue }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 16V4M7 9l5-5 5 5M4 20h16" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+export function PersonSilhouette({ size = 40 }) {
+  return (
+    <Svg width={size} height={size * (64 / 56)} viewBox="0 0 56 64">
+      <Circle cx="28" cy="24" r="12" fill="#9DBBEF" />
+      <Path d="M6 64c0-14 10-22 22-22s22 8 22 22z" fill="#9DBBEF" />
+    </Svg>
+  );
+}

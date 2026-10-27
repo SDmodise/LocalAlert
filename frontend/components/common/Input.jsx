@@ -25,10 +25,10 @@ const Input = forwardRef(function Input(
   return (
     <View style={[styles.field, style]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.box, focused && styles.boxFocused, error && styles.boxError]}>
+      <View style={[styles.box, inputProps.multiline && styles.boxMultiline, focused && styles.boxFocused, error && styles.boxError]}>
         <TextInput
           ref={ref}
-          style={styles.input}
+          style={[styles.input, inputProps.multiline && styles.inputMultiline]}
           placeholderTextColor={colors.ink3}
           onFocus={(e) => { setFocused(true); onFocus?.(e); }}
           onBlur={(e) => { setFocused(false); onBlur?.(e); }}
@@ -61,6 +61,8 @@ const styles = StyleSheet.create({
   boxFocused: { borderColor: colors.blue },
   boxError: { borderColor: colors.blueDark, borderWidth: 2 },
   input: { flex: 1, height: '100%', fontSize: 15, color: colors.ink },
+  boxMultiline: { height: undefined, minHeight: 96, alignItems: 'flex-start', paddingVertical: 10 },
+  inputMultiline: { height: undefined, minHeight: 74, textAlignVertical: 'top', lineHeight: 21 },
   hint: { fontSize: 12, color: colors.ink3 },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   errorText: { flex: 1, fontSize: 12, fontWeight: '600', color: colors.blueDark },

@@ -8,6 +8,7 @@ that runs the backend) on port 5000.
 import Constants from 'expo-constants';
 
 const REQUEST_TIMEOUT_MS = 15000;
+const UPLOAD_TIMEOUT_MS = 60000;
 
 function defaultApiUrl() {
   // hostUri looks like "192.168.1.20:8081" when the app is opened from Expo.
@@ -32,11 +33,13 @@ export class ApiError extends Error {
 }
 
 export async function apiRequest(path, { method = 'GET', body, token } = {}) {
+  const isUpload = typeof FormData !== 'undefined' && body instanceof FormData;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), isUpload ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
 
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // For uploads, fetch sets the multipart Content-Type (with boundary) itself.
+  if (body !== undefined && !isUpload) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
@@ -44,7 +47,7 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
     response = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isUpload ? body : JSON.stringify(body),
       signal: controller.signal,
     });
   } catch (error) {
