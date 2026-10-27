@@ -26,3 +26,4 @@ venv/
 Thumbs.db
 # Uploaded photos and ID documents (personal information)
 backend/uploads/
+expo-temp/
