@@ -23,6 +23,7 @@ import ScreenHeader from '../components/common/ScreenHeader';
 import { ChevronIcon, InfoIcon } from '../components/common/Icons';
 import { getMyProfile, refreshCurrentMunicipality } from '../services/users';
 import JoinFamilyScreen from './JoinFamilyScreen';
+import DeleteAccountScreen from './DeleteAccountScreen';
 
 const ADMIN = 'Family Administrator';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -85,6 +86,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   const [locating, setLocating] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -133,6 +135,16 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
 
   if (joining) {
     return <JoinFamilyScreen onBack={() => setJoining(false)} />;
+  }
+
+  if (deleting) {
+    return (
+      <DeleteAccountScreen
+        isAdmin={(profile || sessionUser || {}).role === ADMIN}
+        onBack={() => setDeleting(false)}
+        onDeleted={onLogout}
+      />
+    );
   }
 
   const p = profile || sessionUser || {};
@@ -192,7 +204,8 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
         <View style={styles.card}>
           <SettingRow title="Join a family group" onPress={() => setJoining(true)} />
           {isAdmin && <SettingRow title="Change PIN" note="Coming soon" />}
-          <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} last />
+          <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} />
+          <SettingRow title="Delete account" onPress={() => setDeleting(true)} last />
         </View>
 
         <View style={styles.spacer} />
@@ -248,8 +261,8 @@ const styles = StyleSheet.create({
   soon: { fontSize: 12, color: colors.ink3 },
   link: { fontSize: 13, fontWeight: '600', color: colors.blue },
 
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: colors.blueTint, borderWidth: 1.5, borderColor: colors.blueDark },
-  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: colors.dangerTint, borderWidth: 1.5, borderColor: colors.danger },
+  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
 
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,26,51,0.55)' },
   sheet: { backgroundColor: colors.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, gap: 16 },

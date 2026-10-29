@@ -26,4 +26,18 @@ async function lookup(req, res) {
     }
 }
 
-module.exports = { lookup };
+// GET /api/municipalities
+// The list of covered municipalities, so people can choose theirs by hand
+// when their location can't be found. Public: used during sign-up.
+async function list(req, res) {
+    try {
+        const municipalities = await spatialService.listMunicipalities();
+        res.set("Cache-Control", "public, max-age=300");
+        res.status(200).json({ success: true, municipalities });
+    } catch (error) {
+        console.error("Listing municipalities failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
+module.exports = { lookup, list };

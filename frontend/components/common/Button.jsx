@@ -1,5 +1,6 @@
 /*
-Buttons matching the Figma components: primary, secondary, outline and dark.
+Buttons matching the Figma components: primary, secondary, outline and dark,
+plus danger for destructive actions.
 */
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
@@ -10,6 +11,7 @@ const VARIANTS = {
   secondary: { bg: colors.blueLight, fg: colors.blue, border: colors.blueLight },
   outline: { bg: colors.white, fg: colors.blue, border: colors.blue },
   dark: { bg: colors.blueDark, fg: colors.white, border: colors.blueDark },
+  danger: { bg: colors.white, fg: colors.danger, border: colors.danger }, // destructive actions, e.g. Remove
 };
 
 export default function Button({ title, onPress, variant = 'primary', loading = false, disabled = false, style }) {

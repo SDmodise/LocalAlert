@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   link: { fontSize: 13, fontWeight: '600', color: colors.blue },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink, marginTop: 4 },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.ink },
-  errorText: { fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  errorText: { fontSize: 13, fontWeight: '600', color: colors.danger },
 
   infoBox: { gap: 10, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.blueTint },
   card: { gap: 12, padding: 14, borderRadius: radius.card, borderWidth: 1.5, borderColor: colors.line },
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   tile: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.blueLight, alignItems: 'center', justifyContent: 'center' },
   successBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: colors.blue, backgroundColor: colors.blueTint },
   successBadge: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
-  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: colors.blueDark, backgroundColor: colors.blueTint },
+  errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: colors.danger, backgroundColor: colors.dangerTint },
 
   permission: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, gap: 16 },
   cameraArea: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },

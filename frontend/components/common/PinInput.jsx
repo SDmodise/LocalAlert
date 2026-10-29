@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   boxFilled: { borderColor: colors.blue },
-  boxError: { borderColor: colors.blueDark },
+  boxError: { borderColor: colors.danger },
   dot: { fontSize: 26, fontWeight: '700', color: colors.blue },
   hidden: { position: 'absolute', opacity: 0, width: 1, height: 1 },
 });

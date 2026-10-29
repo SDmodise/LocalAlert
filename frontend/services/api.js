@@ -30,7 +30,22 @@ function defaultApiUrl() {
   return `http://${devHost()}:5000/api`;
 }
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL || defaultApiUrl();
+// True when the app was loaded through an Expo tunnel (e.g. "abc-8081.exp.direct")
+// instead of the computer's local Wi-Fi address (e.g. "192.168.10.121").
+function loadedThroughTunnel() {
+  const host = devHost();
+  return host !== 'localhost' && !/^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+}
+
+// Which backend to use:
+//  1. EXPO_PUBLIC_API_URL, if set, always wins (fixed address, e.g. a hosted server).
+//  2. Opened through a tunnel (npm run remote): EXPO_PUBLIC_REMOTE_API_URL, the backend tunnel.
+//  3. Otherwise (npm run lan, same Wi-Fi): the computer running Expo, port 5000.
+export const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ||
+  (process.env.EXPO_PUBLIC_REMOTE_API_URL && loadedThroughTunnel()
+    ? process.env.EXPO_PUBLIC_REMOTE_API_URL
+    : defaultApiUrl());
 
 // localtunnel (loca.lt) shows a warning page instead of the API unless this
 // header is sent. Used for testing from other networks only.

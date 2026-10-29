@@ -33,3 +33,8 @@ export async function refreshCurrentMunicipality({ askPermission = false } = {})
   const user = await updateMyLocation(position.coords.latitude, position.coords.longitude);
   return { status: 'updated', user };
 }
+
+// Permanently deletes the signed-in account (needs the password).
+export async function deleteMyAccount(password) {
+  return apiRequest('/users/me', { method: 'DELETE', token: await getToken(), body: { password } });
+}

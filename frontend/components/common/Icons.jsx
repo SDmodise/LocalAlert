@@ -11,7 +11,7 @@ export function ShieldLogo({ size = 36, color = colors.blue }) {
   );
 }
 
-export function InfoIcon({ size = 14, color = colors.blueDark }) {
+export function InfoIcon({ size = 14, color = colors.danger }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       <Circle cx="12" cy="12" r="10" fill={color} />

@@ -49,11 +49,35 @@ async function runOnce() {
     return done;
 }
 
+// Prints each open alert's level and when it moves up next (at start-up and hourly),
+// so it is easy to see in the terminal that escalation is on track.
+async function logPlan() {
+    try {
+        const pool = require("../config/database");
+        const minutes = intervalMinutes();
+        const rows = (await pool.query(
+            `SELECT child_name, escalation_level,
+                    (last_escalated_at AT TIME ZONE current_setting('TimeZone')) AS since
+             FROM alerts WHERE lower(status) IN ('active', 'still_missing') ORDER BY created_at;`
+        )).rows;
+        if (!rows.length) return console.log("[escalation] no open alerts");
+        const when = (d) => new Date(d).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+        for (const a of rows) {
+            const next = new Date(new Date(a.since).getTime() + minutes * 60000);
+            console.log(`[escalation] ${a.child_name}: Level ${a.escalation_level}` +
+                (a.escalation_level >= 4 ? " (all users)" : `, Level ${a.escalation_level + 1} at ${when(next)}`));
+        }
+    } catch (error) {
+        console.error("[escalation] status failed:", error.message);
+    }
+}
+
 function start() {
     if (timer) return;
     console.log(`Escalation job running (every ${intervalMinutes()} minutes per level)`);
-    runOnce();
+    runOnce().then(logPlan);
     timer = setInterval(runOnce, CHECK_EVERY_MS);
+    setInterval(logPlan, 60 * 60 * 1000);
 }
 
 function stop() {

@@ -29,6 +29,7 @@ import PinInput from '../components/common/PinInput';
 import { BackIcon, CheckIcon, InfoIcon, PinIcon } from '../components/common/Icons';
 import { register } from '../services/auth';
 import { lookupMunicipality } from '../services/municipalities';
+import MunicipalityPicker from '../components/common/MunicipalityPicker';
 
 const ADMIN = 'Family Administrator';
 const COMMUNITY = 'Community Member';
@@ -96,7 +97,8 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
   const [consent, setConsent] = useState(false);
 
   // Step 3
-  const [location, setLocation] = useState({ status: 'idle' });
+  const [location, setLocation] = useState({ status: 'idle' }); // idle | locating | found | chosen | not-covered | denied | error
+  const [picking, setPicking] = useState(false); // choosing a municipality by hand
   // status: idle | locating | found | not-covered | denied | error
 
   const [errors, setErrors] = useState({});
@@ -157,6 +159,7 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
   // ---------- Step 3 ----------
   const detectMunicipality = async () => {
     setFormError('');
+    setPicking(false);
     setLocation({ status: 'locating' });
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
@@ -192,7 +195,9 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
         ...(isAdmin ? { pin } : {}),
         ...(location.status === 'found'
           ? { latitude: location.latitude, longitude: location.longitude }
-          : {}),
+          : location.status === 'chosen'
+            ? { municipality_id: location.municipality.municipality_id }
+            : {}),
       };
       const user = await register(details);
       onRegistered?.(user);
@@ -387,29 +392,52 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
                 </View>
               )}
 
-              {location.status === 'found' && (
+              {(location.status === 'found' || location.status === 'chosen') && (
                 <View style={[styles.infoBox, styles.foundRow]}>
                   <View style={styles.flex}>
                     <Text style={styles.caption}>Home municipality</Text>
                     <Text style={styles.foundName}>{location.municipality.municipality_name}</Text>
                     <Text style={styles.body}>{location.municipality.province}</Text>
+                    {location.status === 'chosen' && (
+                      <Pressable onPress={() => setPicking(true)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 4 }}>
+                        <Text style={styles.link}>Change</Text>
+                      </Pressable>
+                    )}
                   </View>
-                  <View style={styles.chip}><Text style={styles.chipText}>Detected</Text></View>
+                  <View style={styles.chip}>
+                    <Text style={styles.chipText}>{location.status === 'chosen' ? 'Chosen' : 'Detected'}</Text>
+                  </View>
                 </View>
               )}
 
               {['not-covered', 'denied', 'error'].includes(location.status) && (
-                <View style={[styles.infoBox, styles.messageRow]}>
-                  <InfoIcon size={18} />
+                <View style={[styles.infoBox, styles.messageRow, location.status === 'error' && styles.locationErrorBox]}>
+                  <InfoIcon size={18} color={location.status === 'error' ? colors.danger : colors.blue} />
                   <Text style={[styles.body, styles.flex]}>
                     {location.status === 'not-covered' &&
                       "LocalAlert doesn't cover your area yet. You can still create an account and will receive alerts that go to all users."}
                     {location.status === 'denied' &&
                       'Location permission was not given. You can create your account now and set your area later.'}
                     {location.status === 'error' &&
-                      "We couldn't find your location. Check that location is switched on, then try again."}
+                      "We couldn't find your location. Check that location is switched on, then try again, or choose your municipality yourself."}
                   </Text>
                 </View>
+              )}
+
+              {/* No location: let the person choose their municipality by hand. */}
+              {['denied', 'error'].includes(location.status) && !picking && (
+                <Button title="Choose my municipality" variant="outline" onPress={() => setPicking(true)} disabled={submitting} />
+              )}
+              {picking && (
+                <MunicipalityPicker
+                  selectedId={location.municipality?.municipality_id}
+                  onSelect={(municipality) => {
+                    setLocation({ status: 'chosen', municipality });
+                    setPicking(false);
+                    setFormError('');
+                  }}
+                  onCancel={() => setPicking(false)}
+                />
               )}
 
               <Text style={[styles.caption, styles.center]}>
@@ -425,8 +453,8 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
 
               <View style={styles.spacer} />
 
-              {location.status === 'found' ? (
-                <Button title="Create account" onPress={createAccount} loading={submitting} />
+              {location.status === 'found' || location.status === 'chosen' ? (
+                <Button title="Create account" onPress={createAccount} loading={submitting} disabled={picking} />
               ) : (
                 <>
                   <Button
@@ -539,6 +567,7 @@ const styles = StyleSheet.create({
   centerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   foundRow: { flexDirection: 'row', alignItems: 'center' },
   messageRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  locationErrorBox: { backgroundColor: colors.dangerTint, borderColor: colors.danger },
   foundName: { fontSize: 16, fontWeight: '700', color: colors.ink },
   chip: { backgroundColor: colors.blue, borderRadius: radius.chip, paddingHorizontal: 9, paddingVertical: 4 },
   chipText: { fontSize: 11, fontWeight: '700', color: colors.white },
@@ -549,9 +578,9 @@ const styles = StyleSheet.create({
     gap: 10,
     padding: 12,
     borderRadius: 12,
-    backgroundColor: colors.blueTint,
+    backgroundColor: colors.dangerTint,
     borderWidth: 1.5,
-    borderColor: colors.blueDark,
+    borderColor: colors.danger,
   },
-  formErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  formErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
 });

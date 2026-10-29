@@ -1,6 +1,7 @@
 /*
 Bottom tab bar (matches the Figma "Tab bar" component).
-The Family tab is only shown to Family Administrators (Phase 4, 4.7.1).
+Family: administrators manage their group there; community members see the
+families they are linked to. Notifications shows an unread count badge.
 */
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -10,16 +11,16 @@ import { AlertTabIcon, BellTabIcon, FamilyTabIcon, ProfileTabIcon } from '../com
 
 const ALL_TABS = [
   { key: 'alerts', label: 'Alerts', Icon: AlertTabIcon },
-  { key: 'family', label: 'Family', Icon: FamilyTabIcon, adminOnly: true },
+  { key: 'family', label: 'Family', Icon: FamilyTabIcon },
   { key: 'notifications', label: 'Notifications', Icon: BellTabIcon },
   { key: 'profile', label: 'Profile', Icon: ProfileTabIcon },
 ];
 
-export function tabsForRole(role) {
-  return ALL_TABS.filter((t) => !t.adminOnly || role === 'Family Administrator');
+export function tabsForRole() {
+  return ALL_TABS;
 }
 
-export default function TabBar({ role, active, onChange }) {
+export default function TabBar({ role, active, onChange, badges = {} }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -33,9 +34,16 @@ export default function TabBar({ role, active, onChange }) {
             onPress={() => onChange(key)}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            accessibilityLabel={label}
+            accessibilityLabel={badges[key] ? `${label}, ${badges[key]} unread` : label}
           >
-            <Icon active={selected} />
+            <View>
+              <Icon active={selected} />
+              {badges[key] ? (
+                <View style={styles.badge} accessibilityLabel={`${badges[key]} unread`}>
+                  <Text style={styles.badgeText}>{badges[key] > 99 ? '99+' : badges[key]}</Text>
+                </View>
+              ) : null}
+            </View>
             <Text style={[styles.label, selected && styles.labelActive]}>{label}</Text>
           </Pressable>
         );
@@ -56,4 +64,9 @@ const styles = StyleSheet.create({
   tab: { alignItems: 'center', gap: 4, minWidth: 72, paddingVertical: 2 },
   label: { fontSize: 11, fontWeight: '600', color: colors.ink3 },
   labelActive: { color: colors.blue },
+  badge: {
+    position: 'absolute', top: -6, right: -12, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: colors.blue, borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, fontWeight: '800', color: colors.white },
 });

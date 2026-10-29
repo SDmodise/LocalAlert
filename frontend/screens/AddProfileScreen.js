@@ -2,7 +2,7 @@
 12 Add profile — matches Figma screen "12 Add profile – ID check".
 
 Photo, name, date of birth, gender, description, ID number (checked while typing,
-never stored) and a photo of the ID document or birth certificate.
+never stored) and, optionally, a photo of the ID document or birth certificate.
 */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -122,7 +122,6 @@ export default function AddProfileScreen({ groupId, onCancel, onSaved }) {
       const ip = idNumberProblem(idDigits, dob, gender);
       if (ip) next.idNumber = ip;
     }
-    if (!idDocument) next.idDocument = 'Upload a photo of the ID document or birth certificate.';
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -273,7 +272,7 @@ export default function AddProfileScreen({ groupId, onCancel, onSaved }) {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>ID document or birth certificate</Text>
+            <Text style={styles.label}>ID document or birth certificate (optional)</Text>
             <Pressable
               style={[styles.upload, idDocument && styles.uploadDone, errors.idDocument && styles.errorBorder]}
               onPress={() => chooseSource((asset) => { if (asset) { setIdDocument(asset); clear('idDocument'); } }, undefined)}
@@ -326,7 +325,7 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: '600', color: colors.ink2 },
   caption: { fontSize: 12, lineHeight: 17, color: colors.ink3 },
   link: { fontSize: 13, fontWeight: '600', color: colors.blue },
-  errorBorder: { borderColor: colors.blueDark, borderWidth: 2 },
+  errorBorder: { borderColor: colors.danger, borderWidth: 2 },
 
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   photoCircle: {
@@ -361,7 +360,7 @@ const styles = StyleSheet.create({
 
   formErrorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12,
-    backgroundColor: colors.blueTint, borderWidth: 1.5, borderColor: colors.blueDark,
+    backgroundColor: colors.dangerTint, borderWidth: 1.5, borderColor: colors.danger,
   },
-  formErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  formErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
 });

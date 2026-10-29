@@ -47,7 +47,7 @@ async function familyOf(client, alertId) {
 
 // Sends the alert to every user in the area who has not had it yet.
 // Returns the number of new recipients.
-async function notifyArea(client, alert, level, municipalityIds, excludeIds) {
+async function notifyArea(client, alert, level, municipalityIds, excludeIds, onlyUserId = null) {
     const title = `Missing: ${alert.child_name}`.slice(0, 100);
     const place = alert.last_seen_place ? ` near ${alert.last_seen_place}` : "";
     const message = `${alert.child_name}${alert.age != null ? `, ${alert.age},` : ""} was last seen${place}. Tap to see the photo and details.`;
@@ -63,8 +63,9 @@ async function notifyArea(client, alert, level, municipalityIds, excludeIds) {
                 OR u.municipality_id = ANY($5::int[])
                 OR u.current_municipality_id = ANY($5::int[]))
            AND NOT (u.user_id = ANY($6::uuid[]))
+           AND ($7::uuid IS NULL OR u.user_id = $7::uuid)
          ON CONFLICT (alert_id, user_id) WHERE notification_type = 'alert' DO NOTHING;`,
-        [alert.alert_id, title, message, level, municipalityIds, excludeIds]
+        [alert.alert_id, title, message, level, municipalityIds, excludeIds, onlyUserId]
     );
     return result.rowCount;
 }
@@ -407,7 +408,108 @@ async function markStillMissing(days) {
     return result.rowCount;
 }
 
+// ---- Sharing -------------------------------------------------------------
+
+// Returns the alert's public share code, creating one the first time.
+async function getOrCreateShareCode(alertId) {
+    const crypto = require("crypto");
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const code = crypto.randomBytes(8).toString("base64url"); // 11 characters
+        const result = await pool.query(
+            `UPDATE alerts SET share_code = COALESCE(share_code, $2)
+             WHERE alert_id = $1
+             RETURNING share_code;`,
+            [alertId, code]
+        ).catch((error) => {
+            if (error.code === "23505") return null; // code already used: try another
+            throw error;
+        });
+        if (result) return result.rows[0]?.share_code || null;
+    }
+    throw new Error("Could not create a share code.");
+}
+
+// Public view of a shared alert: only what is safe to show anyone with the link.
+async function findByShareCode(code) {
+    const result = await pool.query(
+        `SELECT a.alert_id, a.child_name, a.age, a.gender, a.description, a.clothing_description,
+                a.last_seen_place, lower(a.status) AS status, a.escalation_level, a.photo_url,
+                ${tz("a.last_seen_time")} AS last_seen_time,
+                ${tz("a.created_at")} AS created_at,
+                ${tz("a.resolved_at")} AS resolved_at,
+                m.municipality_name, m.province
+         FROM alerts a LEFT JOIN municipalities m ON m.municipality_id = a.municipality_id
+         WHERE a.share_code = $1;`,
+        [code]
+    );
+    return result.rows[0];
+}
+
+// A signed-in user opened a shared link in the app: from now on they receive
+// this alert like someone in the area (details, photo, sightings, "found" message).
+async function followShared(alertId, userId) {
+    await pool.query(
+        `INSERT INTO notifications
+            (user_id, alert_id, title, message, notification_type, recipient_type, escalation_level, municipality_id)
+         SELECT u.user_id, a.alert_id, left('Missing: ' || a.child_name, 100),
+                a.child_name || ' was shared with you. Tap to see the photo and details.',
+                'alert', 'area', a.escalation_level, COALESCE(u.current_municipality_id, u.municipality_id)
+         FROM alerts a, users u
+         WHERE a.alert_id = $1 AND u.user_id = $2 AND lower(a.status) <> 'resolved'
+           AND a.created_by <> u.user_id
+           -- the family already has access and gets family notifications
+           AND NOT EXISTS (
+                SELECT 1 FROM family_members fm JOIN family_groups fg ON fg.group_id = fm.group_id
+                WHERE fm.member_id = a.member_id
+                  AND (fg.admin_user_id = u.user_id
+                       OR EXISTS (SELECT 1 FROM family_links fl WHERE fl.group_id = fg.group_id AND fl.user_id = u.user_id)))
+         ON CONFLICT DO NOTHING;`,
+        [alertId, userId]
+    );
+}
+
+// Catch-up: a user who joined after an alert was sent, or who has moved into an
+// area an open alert already covers, receives it now. Covers every open alert whose
+// current search area (its level so far) includes the user's home or current
+// municipality. Returns how many alerts were delivered.
+async function catchUpUser(userId) {
+    const client = await pool.connect();
+    try {
+        const open = await client.query(
+            `SELECT a.alert_id, a.child_name, a.age, a.last_seen_place, a.escalation_level,
+                    a.municipality_id, a.created_by
+             FROM alerts a
+             WHERE lower(a.status) IN ('active', 'still_missing')
+               AND a.created_by <> $1
+               AND NOT EXISTS (SELECT 1 FROM notifications n
+                               WHERE n.alert_id = a.alert_id AND n.user_id = $1 AND n.notification_type = 'alert')
+               -- the family already has the alert
+               AND NOT EXISTS (
+                    SELECT 1 FROM family_members fm JOIN family_groups fg ON fg.group_id = fm.group_id
+                    WHERE fm.member_id = a.member_id
+                      AND (fg.admin_user_id = $1
+                           OR EXISTS (SELECT 1 FROM family_links fl WHERE fl.group_id = fg.group_id AND fl.user_id = $1)))`,
+            [userId]
+        );
+        let delivered = 0;
+        for (const alert of open.rows) {
+            const areas = alert.escalation_level >= 4 || !alert.municipality_id
+                ? null
+                : await municipalitiesForLevel(client, alert.municipality_id, alert.escalation_level);
+            if (areas === null && alert.escalation_level < 4) continue;
+            delivered += await notifyArea(client, alert, alert.escalation_level, areas, [alert.created_by], userId);
+        }
+        return delivered;
+    } finally {
+        client.release();
+    }
+}
+
 module.exports = {
+    catchUpUser,
+    getOrCreateShareCode,
+    findByShareCode,
+    followShared,
     resolve,
     markStillMissing,
     tz,

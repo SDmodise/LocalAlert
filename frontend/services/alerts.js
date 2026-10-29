@@ -3,8 +3,18 @@ import { getToken } from './auth';
 
 // fields: member_id, latitude, longitude, last_seen_place, last_seen_time (ISO), clothing_description, pin
 // Returns { alert, reach }.
-export async function createAlert(fields) {
-  return apiRequest('/alerts', { method: 'POST', token: await getToken(), body: fields });
+// photo: optional expo-image-picker asset (a new photo); without it the profile photo is used.
+export async function createAlert(fields, photo = null) {
+  let body = fields;
+  if (photo) {
+    body = new FormData();
+    Object.entries(fields).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) body.append(key, String(value));
+    });
+    const type = photo.mimeType || 'image/jpeg';
+    body.append('photo', { uri: photo.uri, type, name: photo.fileName || `alert.${type === 'image/png' ? 'png' : 'jpg'}` });
+  }
+  return apiRequest('/alerts', { method: 'POST', token: await getToken(), body });
 }
 
 export async function listAlerts() {
@@ -50,4 +60,21 @@ export async function listSightings(alertId) {
 
 export function sightingPhotoUrl(alertId, reportId) {
   return `${API_URL}/alerts/${alertId}/sightings/${reportId}/photo`;
+}
+
+// Public share link (same for everyone). Returns { url, code, message }.
+export async function getShareLink(alertId) {
+  return apiRequest(`/alerts/${alertId}/share`, { method: 'POST', token: await getToken() });
+}
+
+// A shared link was opened in the app. Returns { alert_id, status, child_name }.
+export async function followSharedAlert(code) {
+  return apiRequest(`/alerts/shared/${encodeURIComponent(code)}/follow`, { method: 'POST', token: await getToken() });
+}
+
+// Finds the share code in a LocalAlert link:
+//   localalert://a/<code>, https://<server>/a/<code>, exp://<host>/--/a/<code>
+export function shareCodeFromUrl(url) {
+  const match = /\/a\/([A-Za-z0-9_-]{6,16})(?:[/?#]|$)/.exec(String(url || '').replace(/^localalert:\/\//, 'localalert:///'));
+  return match ? match[1] : null;
 }

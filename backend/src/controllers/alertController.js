@@ -1,17 +1,14 @@
-const bcrypt = require("bcrypt");
 const Alert = require("../models/Alert");
 const Sighting = require("../models/Sighting");
+const Notification = require("../models/Notification");
 const spatialService = require("../services/spatialService");
 const escalation = require("../services/alertServices");
+const { requirePin } = require("../services/pinService");
 const { absolutePath, storedPath, removeUploaded } = require("../middleware/uploadMiddleware");
 const { distanceKm } = require("../utils/distance");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Wrong-PIN protection: 5 wrong attempts lock alert sending for 15 minutes.
-const PIN_MAX_ATTEMPTS = 5;
-const PIN_LOCK_MS = 15 * 60 * 1000;
-const pinAttempts = new Map(); // userId -> { count, lockedUntil }
 
 function fail(res, status, message, extra = {}) {
     return res.status(status).json({ success: false, message, ...extra });
@@ -61,49 +58,24 @@ function toAlert(row) {
     };
 }
 
-// Checks the PIN with the wrong-attempt lock. Sends the error response and
-// returns false when the PIN is not accepted.
-async function pinAccepted(req, res, pin) {
-    const locked = checkPinLock(req.user.id);
-    if (locked) {
-        fail(res, 429, `Too many wrong PIN attempts. Try again in ${locked} minute${locked === 1 ? "" : "s"}.`);
-        return null;
-    }
-    const user = await Alert.findUserForPin(req.user.id);
-    if (!user?.pin_hash) {
-        fail(res, 400, "Set a PIN on your account first.");
-        return null;
-    }
-    if (!/^[0-9]{4}$/.test(String(pin || "")) || !(await bcrypt.compare(String(pin), user.pin_hash))) {
-        const left = recordWrongPin(req.user.id);
-        if (left > 0) fail(res, 403, `Incorrect PIN. ${left} attempt${left === 1 ? "" : "s"} left.`, { code: "WRONG_PIN" });
-        else fail(res, 429, "Too many wrong PIN attempts. Try again in 15 minutes.", { code: "WRONG_PIN" });
-        return null;
-    }
-    pinAttempts.delete(req.user.id);
-    return user;
-}
-
-function checkPinLock(userId) {
-    const entry = pinAttempts.get(userId);
-    if (entry?.lockedUntil && entry.lockedUntil > Date.now()) {
-        return Math.ceil((entry.lockedUntil - Date.now()) / 60000);
-    }
-    if (entry?.lockedUntil) pinAttempts.delete(userId);
-    return 0;
-}
-
-function recordWrongPin(userId) {
-    const entry = pinAttempts.get(userId) || { count: 0, lockedUntil: 0 };
-    entry.count += 1;
-    if (entry.count >= PIN_MAX_ATTEMPTS) entry.lockedUntil = Date.now() + PIN_LOCK_MS;
-    pinAttempts.set(userId, entry);
-    return PIN_MAX_ATTEMPTS - entry.count;
-}
+// Checks the PIN (shared wrong-attempt lock, see services/pinService.js).
+// Sends the error response and returns null when the PIN is not accepted.
+const pinAccepted = (req, res, pin) => requirePin(req, res, pin);
 
 // POST /api/alerts
 // { member_id, latitude, longitude, last_seen_place?, last_seen_time (ISO), clothing_description, pin }
+// Accepts JSON, or multipart with an optional new "photo" (a recent photo taken
+// when reporting). Without a new photo, the profile's photo is used.
 async function create(req, res) {
+    const newPhoto = req.files?.photo?.[0];
+    // If the alert is not created, delete the uploaded photo again.
+    res.on("finish", () => {
+        if (newPhoto && res.statusCode !== 201) removeUploaded(req);
+    });
+    return createAlert(req, res, newPhoto);
+}
+
+async function createAlert(req, res, newPhoto) {
     try {
         const body = req.body || {};
         const memberId = String(body.member_id || "");
@@ -158,7 +130,7 @@ async function create(req, res) {
             age: ageFrom(profile.date_of_birth),
             gender: profile.gender,
             description: profile.physical_description,
-            photo_url: profile.photo_url,
+            photo_url: newPhoto ? storedPath(newPhoto) : profile.photo_url,
             clothing_description: clothing,
             latitude,
             longitude,
@@ -180,6 +152,9 @@ async function create(req, res) {
 // GET /api/alerts
 async function list(req, res) {
     try {
+        // Alerts already open in the user's area that they have not received yet
+        // (e.g. they joined or arrived after the alert was sent).
+        await Alert.catchUpUser(req.user.id);
         const rows = await Alert.listForUser(req.user.id);
         res.status(200).json({ success: true, alerts: rows.map(toAlert) });
     } catch (error) {
@@ -209,6 +184,8 @@ async function get(req, res) {
     try {
         const row = await loadAllowed(req, res);
         if (!row) return;
+        // Opening the alert counts as reading its notifications.
+        await Notification.markAlertRead(req.user.id, row.alert_id);
         const result = { success: true, alert: toAlert(row) };
         if (row.is_creator || row.is_family) {
             result.reach = await Alert.reach(row, escalation.intervalMinutes());

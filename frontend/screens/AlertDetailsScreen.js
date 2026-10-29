@@ -31,6 +31,7 @@ import AuthImage from '../components/common/AuthImage';
 import { CheckIcon, ClockIcon, InfoIcon, PersonSilhouette, PinIcon } from '../components/common/Icons';
 import { alertPhotoUrl, getAlert, listSightings, resolveAlert, sightingPhotoUrl } from '../services/alerts';
 import SpottedReportScreen from './SpottedReportScreen';
+import ShareAlertButton from '../components/alerts/ShareAlertButton';
 
 const pad = (n) => String(n).padStart(2, '0');
 const clock = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -147,6 +148,7 @@ function CommunityView({ alert, onSighting, refresh }) {
           ) : null}
         </View>
         <Button title="I saw this person" onPress={onSighting} />
+        <ShareAlertButton alert={alert} />
         <Button title="Call SAPS (10111)" variant="outline" onPress={callSaps} />
       </View>
     </ScrollView>
@@ -207,20 +209,21 @@ function FamilyView({ alert, reach, sightings, sightingsError, onResolve, onSigh
   const notified = (reach?.family || 0) + (reach?.levels || []).reduce((sum, l) => sum + (l.users || 0), 0);
   return (
     <ScrollView contentContainerStyle={[styles.scroll, styles.body]} refreshControl={refresh}>
-      <View style={styles.inlineBetween}>
-        <View style={styles.inline}>
-          <AuthImage
-            uri={alert.has_photo ? alertPhotoUrl(alert.alert_id) : null}
-            style={styles.smallPhoto}
-            fallback={<PersonSilhouette size={30} />}
-          />
-          <View>
-            <Text style={styles.cardTitle}>{alert.child_name}</Text>
-            <Text style={styles.small}>{alert.last_seen_place || alert.municipality_name}</Text>
-          </View>
-        </View>
-        <StatusChip alert={alert} />
+      <View style={styles.familyHero}>
+        <AuthImage
+          uri={alert.has_photo ? alertPhotoUrl(alert.alert_id) : null}
+          style={styles.familyPhoto}
+          fallback={<PersonSilhouette size={90} />}
+        />
+        <View style={styles.heroChipRight}><StatusChip alert={alert} /></View>
       </View>
+      <View>
+        <Text style={styles.name}>{alert.child_name}</Text>
+        <Text style={styles.small}>
+          {alert.age !== null ? `${alert.age} years · ` : ''}{personWord(alert)} · last seen {alert.last_seen_place || alert.municipality_name}, {dayAndTime(alert.last_seen_time)}
+        </Text>
+      </View>
+      <ShareAlertButton alert={alert} variant="primary" title="Share alert on WhatsApp, Facebook, X…" />
 
       {reach ? (
         <View style={styles.card}>
@@ -446,6 +449,12 @@ const styles = StyleSheet.create({
   card: { gap: 12, padding: 14, borderRadius: radius.card, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.white },
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
+  familyHero: { marginTop: 4 },
+  familyPhoto: {
+    height: 220, borderRadius: radius.card, backgroundColor: colors.blueLight,
+    alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden',
+  },
+  heroChipRight: { position: 'absolute', right: 12, top: 12 },
   smallPhoto: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.blueLight, alignItems: 'center', justifyContent: 'flex-end', overflow: 'hidden' },
   chip: { borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 4 },
   chipSolid: { backgroundColor: colors.blue },
@@ -483,7 +492,7 @@ const styles = StyleSheet.create({
   lockCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   pinTitle: { fontSize: 22, fontWeight: '800', color: colors.white, textAlign: 'center' },
   pinBody: { fontSize: 14, lineHeight: 21, color: colors.heroText, textAlign: 'center', marginBottom: 8 },
-  pinError: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.blue },
+  pinError: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: colors.danger },
   pinErrorText: { flexShrink: 1, fontSize: 13, fontWeight: '600', color: colors.white },
   cancel: { fontSize: 15, fontWeight: '600', color: colors.heroText, padding: 8 },
 });

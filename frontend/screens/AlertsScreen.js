@@ -89,7 +89,7 @@ function AlertCard({ alert, onPress }) {
   );
 }
 
-export default function AlertsScreen({ user, onFullScreen }) {
+export default function AlertsScreen({ user, onFullScreen, openAlert, onAlertOpened }) {
   const insets = useSafeAreaInsets();
   const isAdmin = user?.role === ADMIN;
   const [alerts, setAlerts] = useState(null);
@@ -119,6 +119,15 @@ export default function AlertsScreen({ user, onFullScreen }) {
     setOpenId(id);
     onFullScreen?.(Boolean(id));
   };
+
+  // Opened from a shared link (see App.js).
+  useEffect(() => {
+    if (!openAlert) return;
+    setCreating(false);
+    openDetails(openAlert.id);
+    onAlertOpened?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openAlert]);
 
   if (openId) {
     return <AlertDetailsScreen alertId={openId} onBack={() => { openDetails(null); load(); }} />;
@@ -249,7 +258,7 @@ const styles = StyleSheet.create({
   segmentTextOn: { color: colors.blue, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12,
-    backgroundColor: colors.blueTint, borderWidth: 1.5, borderColor: colors.blueDark,
+    backgroundColor: colors.dangerTint, borderWidth: 1.5, borderColor: colors.danger,
   },
-  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
 });

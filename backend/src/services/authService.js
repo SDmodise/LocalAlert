@@ -106,10 +106,16 @@ async function register(body = {}) {
     const roleRow = await User.getRoleId(role);
     if (!roleRow) throw new Error(`Role "${role}" is missing from the roles table.`);
 
-    // The coordinates are only used to find the municipality; they are not stored.
-    const municipality = body.latitude != null && body.longitude != null
+    // Home municipality: from the phone's location (the coordinates are only used
+    // for the lookup and are not stored), or chosen by hand from the list when the
+    // location could not be found.
+    let municipality = body.latitude != null && body.longitude != null
         ? await spatialService.findMunicipality(body.latitude, body.longitude)
         : null;
+    if (!municipality && body.municipality_id != null && body.municipality_id !== "") {
+        municipality = await spatialService.findMunicipalityById(Number(body.municipality_id));
+        if (!municipality) throw new AuthError("Choose a municipality from the list.", 400);
+    }
 
     let created;
     try {

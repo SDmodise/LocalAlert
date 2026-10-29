@@ -1,10 +1,10 @@
 /*
 LocalAlert design tokens, matching the Figma file "LocalAlert – UI Design (Phase 4)".
-Blue and white palette. Errors use deep blue with an icon instead of red.
+Blue and white palette. Validation errors are red (danger) with an icon.
 */
 export const colors = {
   blue: '#1559D6',        // primary actions, active states
-  blueDark: '#0B2F73',    // errors, Level 4, still missing, "Mark as found"
+  blueDark: '#0B2F73',    // Level 4, still missing, "Mark as found"
   blueMid: '#3D7BEA',
   blueLight: '#E8F0FD',   // secondary buttons, chips, icon backgrounds
   blueTint: '#F4F8FE',    // info boxes, selected cards
@@ -14,6 +14,8 @@ export const colors = {
   ink3: '#8292AD',        // hints, placeholders
   heroText: '#D3E1FA',    // muted text on blue
   white: '#FFFFFF',
+  danger: '#D92D20',      // validation errors: text, icons, field borders
+  dangerTint: '#FEF3F2',  // background of error boxes
 };
 
 export const radius = { field: 12, button: 14, card: 16, chip: 999 };

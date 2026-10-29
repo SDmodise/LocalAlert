@@ -59,11 +59,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
   },
   boxFocused: { borderColor: colors.blue },
-  boxError: { borderColor: colors.blueDark, borderWidth: 2 },
+  boxError: { borderColor: colors.danger, borderWidth: 2 },
   input: { flex: 1, height: '100%', fontSize: 15, color: colors.ink },
   boxMultiline: { height: undefined, minHeight: 96, alignItems: 'flex-start', paddingVertical: 10 },
   inputMultiline: { height: undefined, minHeight: 74, textAlignVertical: 'top', lineHeight: 21 },
   hint: { fontSize: 12, color: colors.ink3 },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  errorText: { flex: 1, fontSize: 12, fontWeight: '600', color: colors.blueDark },
+  errorText: { flex: 1, fontSize: 12, fontWeight: '600', color: colors.danger },
 });

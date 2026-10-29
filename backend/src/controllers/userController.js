@@ -1,5 +1,11 @@
 const User = require("../models/User");
 const spatialService = require("../services/spatialService");
+const Alert = require("../models/Alert");
+const bcrypt = require("bcrypt");
+const { deleteStoredFiles } = require("../middleware/uploadMiddleware");
+
+// Wrong-password protection for deleting an account: 5 tries, then 15 minutes.
+const deleteAttempts = new Map();
 
 function toProfile(row) {
     return {
@@ -43,6 +49,8 @@ async function updateLocation(req, res) {
 
         const municipality = await spatialService.findMunicipality(latitude, longitude);
         await User.updateCurrentMunicipality(req.user.id, municipality ? municipality.municipality_id : null);
+        // Now in a new area: receive any open alerts that already cover it.
+        await Alert.catchUpUser(req.user.id).catch((e) => console.error("Alert catch-up failed:", e.message));
 
         const row = await User.findProfileById(req.user.id);
         res.status(200).json({ success: true, user: toProfile(row) });
@@ -52,4 +60,42 @@ async function updateLocation(req, res) {
     }
 }
 
-module.exports = { getMe, updateLocation };
+// DELETE /api/users/me   { password }
+// Permanently deletes the account (POPIA: the right to have personal information deleted).
+async function deleteMe(req, res) {
+    try {
+        const entry = deleteAttempts.get(req.user.id);
+        if (entry?.lockedUntil > Date.now()) {
+            return res.status(429).json({ success: false, message: "Too many wrong passwords. Try again in 15 minutes." });
+        }
+        const hash = await User.findPasswordHash(req.user.id);
+        if (!hash) return res.status(404).json({ success: false, message: "Your account could not be found." });
+
+        const password = String(req.body?.password || "");
+        if (!password || !(await bcrypt.compare(password, hash))) {
+            const next = { count: (entry?.count || 0) + 1, lockedUntil: 0 };
+            if (next.count >= 5) next.lockedUntil = Date.now() + 15 * 60 * 1000;
+            deleteAttempts.set(req.user.id, next);
+            // 403, not 401: a wrong password here must not log the user out.
+            return res.status(403).json({ success: false, message: "Incorrect password." });
+        }
+        deleteAttempts.delete(req.user.id);
+
+        const open = await User.countOpenAlertsCreatedBy(req.user.id);
+        if (open > 0) {
+            return res.status(409).json({
+                success: false,
+                message: "You have an open alert. Mark the person as found before deleting your account.",
+            });
+        }
+
+        const { files } = await User.deleteAccount(req.user.id);
+        deleteStoredFiles(files);
+        res.status(200).json({ success: true, message: "Your account and personal information have been deleted." });
+    } catch (error) {
+        console.error("Deleting account failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
+module.exports = { getMe, updateLocation, deleteMe };

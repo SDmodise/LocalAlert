@@ -6,6 +6,7 @@ and linked family members. "Add profile" opens AddProfileScreen.
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert as NativeAlert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -22,10 +23,12 @@ import ScreenHeader from '../components/common/ScreenHeader';
 import EmptyState from '../components/common/EmptyState';
 import AuthImage from '../components/common/AuthImage';
 import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette, PlusIcon } from '../components/common/Icons';
-import { createFamilyGroup, getMyFamilyGroup, profilePhotoUrl } from '../services/family';
+import { createFamilyGroup, getMyFamilyGroup, profilePhotoUrl, removeLinkedMember } from '../services/family';
 import { ageInYears } from '../utils/idNumber';
 import AddProfileScreen from './AddProfileScreen';
 import LinkMemberScreen from './LinkMemberScreen';
+import LinkedFamilyScreen from './LinkedFamilyScreen';
+import ProfileDetailsScreen from './ProfileDetailsScreen';
 
 function describe(profile) {
   const age = ageInYears(profile.date_of_birth);
@@ -34,10 +37,16 @@ function describe(profile) {
   return age === null ? word : `${age} ${age === 1 ? 'year' : 'years'} · ${word}`;
 }
 
-function ProfileCard({ profile }) {
+function ProfileCard({ profile, onOpen }) {
   const verified = profile.verification_status === 'verified';
   return (
-    <View style={styles.card} accessibilityLabel={`${profile.full_name}, ${describe(profile)}, ${verified ? 'verified' : 'pending ID'}`}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && { backgroundColor: colors.blueTint }]}
+      onPress={() => onOpen(profile)}
+      accessibilityRole="button"
+      accessibilityLabel={`${profile.full_name}, ${describe(profile)}, ${verified ? 'verified' : 'pending ID'}`}
+      accessibilityHint="Opens the profile to view or edit it"
+    >
       <AuthImage
         uri={profile.has_photo ? profilePhotoUrl(profile.member_id) : null}
         style={styles.avatar}
@@ -57,7 +66,7 @@ function ProfileCard({ profile }) {
           <Text style={[styles.chipText, { color: colors.ink2 }]}>Pending ID</Text>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -65,7 +74,13 @@ function initials(m) {
   return `${(m.first_name || '?')[0]}${(m.last_name || '')[0] || ''}`.toUpperCase();
 }
 
-export default function FamilyScreen() {
+// Administrators manage their family group; everyone else sees the families they are linked to.
+export default function FamilyScreen({ user, onFullScreen }) {
+  if (user?.role !== 'Family Administrator') return <LinkedFamilyScreen onFullScreen={onFullScreen} />;
+  return <AdminFamilyScreen />;
+}
+
+function AdminFamilyScreen() {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState(null); // { group, profiles, members }
   const [loading, setLoading] = useState(true);
@@ -73,6 +88,7 @@ export default function FamilyScreen() {
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
   const [linking, setLinking] = useState(false);
+  const [viewing, setViewing] = useState(null); // profile opened for details
 
   // Create-group form
   const [groupName, setGroupName] = useState('');
@@ -115,6 +131,43 @@ export default function FamilyScreen() {
       setCreating(false);
     }
   };
+
+  const confirmRemoveMember = (member) => {
+    const name = `${member.first_name} ${member.last_name}`.trim();
+    NativeAlert.alert(
+      `Remove ${name}?`,
+      "They will no longer receive this family's alerts or see its profiles. Their own LocalAlert account is not deleted.",
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await removeLinkedMember(data.group.group_id, member.user_id);
+              await load();
+            } catch (e) {
+              NativeAlert.alert('Could not remove the family member', e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  if (viewing) {
+    return (
+      <ProfileDetailsScreen
+        profile={viewing}
+        onBack={() => setViewing(null)}
+        onChanged={load}
+        onRemoved={async () => {
+          setViewing(null);
+          await load();
+        }}
+      />
+    );
+  }
 
   if (adding && data?.group) {
     return (
@@ -230,8 +283,10 @@ export default function FamilyScreen() {
             <Button title="Add a profile" variant="secondary" onPress={() => setAdding(true)} />
           </View>
         ) : (
-          profiles.map((p) => <ProfileCard key={p.member_id} profile={p} />)
+          profiles.map((p) => <ProfileCard key={p.member_id} profile={p} onOpen={setViewing} />)
         )}
+
+        {profiles.length > 0 ? <Text style={styles.caption}>Tap a profile to view, edit or remove it.</Text> : null}
 
         {profiles.some((p) => p.verification_status !== 'verified') && (
           <Text style={styles.caption}>
@@ -253,15 +308,19 @@ export default function FamilyScreen() {
             <Button title="Invite a family member" variant="secondary" onPress={() => setLinking(true)} />
           </View>
         ) : (
-          <View style={styles.membersRow}>
-            <View style={styles.avatars}>
-              {members.slice(0, 4).map((m, i) => (
-                <View key={m.user_id} style={[styles.memberAvatar, i > 0 && { marginLeft: -8 }]}>
+          <View style={styles.memberList}>
+            {members.map((m) => (
+              <View key={m.user_id} style={styles.memberRow}>
+                <View style={styles.memberAvatar}>
                   <Text style={styles.memberInitials}>{initials(m)}</Text>
                 </View>
-              ))}
-            </View>
-            <Text style={[styles.body, styles.flex]}>
+                <Text style={[styles.cardTitle, styles.flex]} numberOfLines={1}>{m.first_name} {m.last_name}</Text>
+                <Pressable onPress={() => confirmRemoveMember(m)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${m.first_name}`}>
+                  <Text style={styles.link}>Remove</Text>
+                </Pressable>
+              </View>
+            ))}
+            <Text style={styles.caption}>
               You and {members.length} linked {members.length === 1 ? 'member' : 'members'} receive this family's alerts immediately.
             </Text>
           </View>
@@ -312,6 +371,11 @@ const styles = StyleSheet.create({
 
   infoBox: { gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.blueTint },
   membersRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  memberList: { gap: 8 },
+  memberRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 10, borderRadius: radius.card,
+    borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.white,
+  },
   avatars: { flexDirection: 'row' },
   memberAvatar: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.blue,
@@ -321,7 +385,7 @@ const styles = StyleSheet.create({
 
   errorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12,
-    backgroundColor: colors.blueTint, borderWidth: 1.5, borderColor: colors.blueDark,
+    backgroundColor: colors.dangerTint, borderWidth: 1.5, borderColor: colors.danger,
   },
-  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.blueDark },
+  errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
 });

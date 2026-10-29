@@ -13,3 +13,9 @@ export async function lookupMunicipality(latitude, longitude) {
     throw error;
   }
 }
+
+// All covered municipalities: [{ municipality_id, municipality_name, province, ... }]
+export async function listMunicipalities() {
+  const data = await apiRequest('/municipalities');
+  return data.municipalities;
+}
