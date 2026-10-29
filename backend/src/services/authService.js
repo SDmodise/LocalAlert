@@ -7,6 +7,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const jwtConfig = require("../config/jwt");
 const spatialService = require("./spatialService");
+const { EMAIL_PATTERN, normalisePhone } = require("../utils/validator");
 
 // Used when the email does not exist, so a failed login takes the same
 // time whether or not the account exists.
@@ -57,14 +58,6 @@ async function login({ email, password } = {}) {
 
 const ROLES = ["Family Administrator", "Community Member"];
 const NAME_PATTERN = /^[A-Za-zÀ-ÿ' -]{1,50}$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-// Accepts 0821234567, 082 123 4567 or +27821234567 and returns 0821234567.
-function normalisePhone(phone) {
-    const digits = String(phone || "").replace(/[\s-]/g, "");
-    const local = digits.startsWith("+27") ? "0" + digits.slice(3) : digits;
-    return /^0[6-8][0-9]{8}$/.test(local) ? local : null;
-}
 
 function passwordProblem(password) {
     if (typeof password !== "string" || password.length < 8) return "Password must be at least 8 characters.";

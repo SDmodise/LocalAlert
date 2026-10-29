@@ -132,3 +132,42 @@ export function PersonSilhouette({ size = 40 }) {
     </Svg>
   );
 }
+
+export function ClockIcon({ size = 16, color = colors.ink2 }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke={color} strokeWidth={2} />
+      <Path d="M12 7v5l3 2" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function CloseIcon({ size = 18, color = colors.blue }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M18 6L6 18M6 6l12 12" stroke={color} strokeWidth={2.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+// LocalAlert logo (Concept C, "Pin and Waves").
+// variant "blue": blue pin, white person (for white backgrounds)
+// variant "white": white pin, blue person (for blue backgrounds)
+export function AppLogo({ size = 36, variant = 'blue' }) {
+  // "Pin and Waves": a child in a map pin with alert waves on both sides.
+  // size is the height; width follows the mark's proportions.
+  const fg = variant === 'white' ? colors.white : colors.blue;
+  const person = variant === 'white' ? colors.blue : colors.white;
+  const wave = { stroke: fg, strokeWidth: 44, strokeLinecap: 'round', fill: 'none' };
+  return (
+    <Svg width={size * (724 / 670)} height={size} viewBox="150 160 724 670" accessibilityLabel="LocalAlert logo">
+      <Path d="M769.3 243.1 A318 318 0 0 1 769.3 616.9" {...wave} />
+      <Path d="M254.7 616.9 A318 318 0 0 1 254.7 243.1" {...wave} />
+      <Path d="M842.1 190.2 A408 408 0 0 1 842.1 669.8" {...wave} opacity={0.55} />
+      <Path d="M181.9 669.8 A408 408 0 0 1 181.9 190.2" {...wave} opacity={0.55} />
+      <Path d="M512 820 C436.4 644.5 302 593.8 302 430 A210 210 0 1 1 722 430 C722 593.8 587.6 644.5 512 820 Z" fill={fg} />
+      <Circle cx="512" cy="399.8" r="51.5" fill={person} />
+      <Path d="M409.0 545.4 C409.0 471.4 456.0 467.0 512 467.0 C568.0 467.0 615.0 471.4 615.0 545.4 Z" fill={person} />
+    </Svg>
+  );
+}

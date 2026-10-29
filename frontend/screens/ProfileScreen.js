@@ -22,6 +22,7 @@ import Button from '../components/common/Button';
 import ScreenHeader from '../components/common/ScreenHeader';
 import { ChevronIcon, InfoIcon } from '../components/common/Icons';
 import { getMyProfile, refreshCurrentMunicipality } from '../services/users';
+import JoinFamilyScreen from './JoinFamilyScreen';
 
 const ADMIN = 'Family Administrator';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -83,6 +84,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   const [error, setError] = useState('');
   const [locating, setLocating] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -128,6 +130,10 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
       { text: 'Log out', style: 'destructive', onPress: onLogout },
     ]);
   };
+
+  if (joining) {
+    return <JoinFamilyScreen onBack={() => setJoining(false)} />;
+  }
 
   const p = profile || sessionUser || {};
   const isAdmin = p.role === ADMIN;
@@ -184,7 +190,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
         )}
 
         <View style={styles.card}>
-          <SettingRow title="Join a family group" note="Coming soon" />
+          <SettingRow title="Join a family group" onPress={() => setJoining(true)} />
           {isAdmin && <SettingRow title="Change PIN" note="Coming soon" />}
           <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} last />
         </View>

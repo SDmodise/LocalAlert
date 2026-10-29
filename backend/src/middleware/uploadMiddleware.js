@@ -11,6 +11,7 @@ const multer = require("multer");
 
 const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(__dirname, "..", "..", "uploads"));
 const FOLDERS = { photo: "photos", id_document: "id_documents" };
+const SIGHTINGS_FOLDER = "sightings";
 const IMAGE_TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -20,7 +21,7 @@ const IMAGE_TYPES = {
 };
 const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
 
-for (const folder of Object.values(FOLDERS)) {
+for (const folder of [...Object.values(FOLDERS), SIGHTINGS_FOLDER]) {
     fs.mkdirSync(path.join(UPLOAD_DIR, folder), { recursive: true });
 }
 
@@ -53,9 +54,31 @@ function profileUpload(req, res, next) {
     });
 }
 
-// Path stored in the database, e.g. "photos/<uuid>.jpg"
+// Sighting reports: one optional photo, saved under uploads/sightings.
+const sightingFile = multer({
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => cb(null, path.join(UPLOAD_DIR, SIGHTINGS_FOLDER)),
+        filename: (req, file, cb) => cb(null, crypto.randomUUID() + IMAGE_TYPES[file.mimetype]),
+    }),
+    limits: { fileSize: MAX_FILE_BYTES, files: 1 },
+    fileFilter: (req, file, cb) => {
+        if (file.fieldname !== "photo") return cb(new Error("Unexpected file."));
+        if (!IMAGE_TYPES[file.mimetype]) return cb(new Error("Only photos (JPEG, PNG, WebP or HEIC) can be uploaded."));
+        cb(null, true);
+    },
+}).fields([{ name: "photo", maxCount: 1 }]);
+
+function sightingUpload(req, res, next) {
+    sightingFile(req, res, (error) => {
+        if (!error) return next();
+        const message = error.code === "LIMIT_FILE_SIZE" ? "The photo must be smaller than 8 MB." : error.message;
+        res.status(400).json({ success: false, message });
+    });
+}
+
+// Path stored in the database, e.g. "photos/<uuid>.jpg" (folder taken from where multer saved it)
 function storedPath(file) {
-    return file ? `${FOLDERS[file.fieldname]}/${file.filename}` : null;
+    return file ? `${path.basename(file.destination)}/${file.filename}` : null;
 }
 
 function absolutePath(stored) {
@@ -70,4 +93,4 @@ function removeUploaded(req) {
     }
 }
 
-module.exports = { profileUpload, storedPath, absolutePath, removeUploaded };
+module.exports = { profileUpload, sightingUpload, storedPath, absolutePath, removeUploaded };

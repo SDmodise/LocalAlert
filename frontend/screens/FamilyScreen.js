@@ -25,6 +25,7 @@ import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette, PlusIcon } from '
 import { createFamilyGroup, getMyFamilyGroup, profilePhotoUrl } from '../services/family';
 import { ageInYears } from '../utils/idNumber';
 import AddProfileScreen from './AddProfileScreen';
+import LinkMemberScreen from './LinkMemberScreen';
 
 function describe(profile) {
   const age = ageInYears(profile.date_of_birth);
@@ -71,6 +72,7 @@ export default function FamilyScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [adding, setAdding] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   // Create-group form
   const [groupName, setGroupName] = useState('');
@@ -121,6 +123,19 @@ export default function FamilyScreen() {
         onCancel={() => setAdding(false)}
         onSaved={async () => {
           setAdding(false);
+          await load();
+        }}
+      />
+    );
+  }
+
+  if (linking && data?.group) {
+    return (
+      <LinkMemberScreen
+        groupId={data.group.group_id}
+        groupName={data.group.group_name}
+        onBack={async () => {
+          setLinking(false);
           await load();
         }}
       />
@@ -226,12 +241,16 @@ export default function FamilyScreen() {
 
         <View style={[styles.sectionRow, { marginTop: 8 }]}>
           <Text style={styles.sectionTitle}>Linked family members</Text>
+          <Pressable onPress={() => setLinking(true)} hitSlop={8} accessibilityRole="button">
+            <Text style={styles.link}>Invite</Text>
+          </Pressable>
         </View>
         {members.length === 0 ? (
           <View style={styles.infoBox}>
             <Text style={styles.body}>
-              No family members linked yet. Linked members receive this family's alerts immediately, wherever they are. Inviting them by invitation or QR code is the next part being built.
+              No family members linked yet. Linked members receive this family's alerts immediately, wherever they are.
             </Text>
+            <Button title="Invite a family member" variant="secondary" onPress={() => setLinking(true)} />
           </View>
         ) : (
           <View style={styles.membersRow}>

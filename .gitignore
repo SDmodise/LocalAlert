@@ -27,3 +27,6 @@ Thumbs.db
 # Uploaded photos and ID documents (personal information)
 backend/uploads/
 expo-temp/
+
+# Project documents (proposal, reports, diagrams, logo files) stay on this computer only
+docs/

@@ -23,17 +23,9 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, radius } from '../theme';
 import { login } from '../services/auth';
+import { AppLogo } from '../components/common/Icons';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function ShieldLogo({ size = 36 }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 2l8 3v6c0 5-3.4 9.4-8 11-4.6-1.6-8-6-8-11V5l8-3z" fill={colors.blue} />
-      <Path d="M12 7v6M12 16.5v.5" stroke={colors.white} strokeWidth={2.2} strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 function InfoIcon({ size = 14 }) {
   return (
@@ -120,7 +112,7 @@ export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
           {/* Hero */}
           <View style={[styles.hero, { paddingTop: insets.top + 28 }]}>
             <View style={styles.logoTile} accessibilityElementsHidden importantForAccessibility="no">
-              <ShieldLogo />
+              <AppLogo size={44} />
             </View>
             <Text style={styles.appName} accessibilityRole="header">LocalAlert</Text>
             <Text style={styles.tagline}>

@@ -1,4 +1,28 @@
 {
+  "name": "LocalAlert",
+  "slug": "localalert",
+  "version": "1.0.0",
+  "orientation": "portrait",
+  "userInterfaceStyle": "light",
+  "icon": "./assets/icon.png",
+  "splash": {
+    "image": "./assets/splash-icon.png",
+    "resizeMode": "contain",
+    "backgroundColor": "#1559D6"
+  },
+  "ios": {
+    "supportsTablet": false
+  },
+  "android": {
+    "adaptiveIcon": {
+      "foregroundImage": "./assets/adaptive-icon.png",
+      "monochromeImage": "./assets/adaptive-icon-monochrome.png",
+      "backgroundColor": "#1559D6"
+    }
+  },
+  "web": {
+    "favicon": "./assets/favicon.png"
+  },
   "plugins": [
     "expo-asset",
     [
@@ -13,6 +37,13 @@
         "cameraPermission": "LocalAlert uses the camera to take photos for family profiles and sighting reports.",
         "photosPermission": "LocalAlert uses your photos to add pictures to family profiles and sighting reports."
       }
-    ]
+    ],
+    [
+      "expo-camera",
+      {
+        "cameraPermission": "LocalAlert uses the camera to scan family QR codes and take photos."
+      }
+    ],
+    "expo-status-bar"
   ]
 }

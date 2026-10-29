@@ -19,6 +19,7 @@ const LOCATION_REFRESH_MS = 10 * 60 * 1000; // at most every 10 minutes
 
 function MainTabs({ user, onLogout }) {
   const [tab, setTab] = useState('alerts');
+  const [fullScreen, setFullScreen] = useState(false); // hides the tab bar (e.g. while reporting a missing person)
 
   // If the role has no such tab (e.g. Family for community members), fall back to Alerts.
   const visible = tabsForRole(user.role).some((t) => t.key === tab) ? tab : 'alerts';
@@ -27,13 +28,13 @@ function MainTabs({ user, onLogout }) {
   if (visible === 'family') screen = <FamilyScreen user={user} />;
   else if (visible === 'notifications') screen = <NotificationsScreen user={user} />;
   else if (visible === 'profile') screen = <ProfileScreen sessionUser={user} onLogout={onLogout} />;
-  else screen = <AlertsScreen user={user} />;
+  else screen = <AlertsScreen user={user} onFullScreen={setFullScreen} />;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.white }}>
       <StatusBar style="dark" />
       <View style={{ flex: 1 }}>{screen}</View>
-      <TabBar role={user.role} active={visible} onChange={setTab} />
+      {fullScreen ? null : <TabBar role={user.role} active={visible} onChange={setTab} />}
     </View>
   );
 }
