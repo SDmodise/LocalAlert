@@ -155,12 +155,13 @@ export function CloseIcon({ size = 18, color = colors.blue }) {
 // variant "white": white pin, blue person (for blue backgrounds)
 export function AppLogo({ size = 36, variant = 'blue' }) {
   // "Pin and Waves": a child in a map pin with alert waves on both sides.
-  // size is the height; width follows the mark's proportions.
+  // size is the height; width follows the mark's proportions. The view box includes
+  // the full outer waves (and their rounded ends), so nothing is clipped.
   const fg = variant === 'white' ? colors.white : colors.blue;
   const person = variant === 'white' ? colors.blue : colors.white;
   const wave = { stroke: fg, strokeWidth: 44, strokeLinecap: 'round', fill: 'none' };
   return (
-    <Svg width={size * (724 / 670)} height={size} viewBox="150 160 724 670" accessibilityLabel="LocalAlert logo">
+    <Svg width={size * (868 / 664)} height={size} viewBox="78 160 868 664" accessibilityLabel="LocalAlert logo">
       <Path d="M769.3 243.1 A318 318 0 0 1 769.3 616.9" {...wave} />
       <Path d="M254.7 616.9 A318 318 0 0 1 254.7 243.1" {...wave} />
       <Path d="M842.1 190.2 A408 408 0 0 1 842.1 669.8" {...wave} opacity={0.55} />

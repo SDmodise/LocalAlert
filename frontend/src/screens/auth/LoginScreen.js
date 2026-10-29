@@ -112,7 +112,7 @@ export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
           {/* Hero */}
           <View style={[styles.hero, { paddingTop: insets.top + 28 }]}>
             <View style={styles.logoTile} accessibilityElementsHidden importantForAccessibility="no">
-              <AppLogo size={44} />
+              <AppLogo size={36} />
             </View>
             <Text style={styles.appName} accessibilityRole="header">LocalAlert</Text>
             <Text style={styles.tagline}>
