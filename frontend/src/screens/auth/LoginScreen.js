@@ -2,12 +2,12 @@
 01 Log in — matches screen "01 Log in" in the Figma design.
 
 Validates the form, calls POST /api/auth/login, saves the session and
-hands the signed-in user to App through onLoggedIn.
+hands the signed-in user to App through onLoggedIn. "Forgot password?" opens
+ForgotPasswordScreen; after a reset, App shows this screen again with a notice.
 */
 import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -23,7 +23,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 
 import { colors, radius } from '../../theme';
 import { login } from '../../services/auth';
-import { AppLogo } from '../../components/common/Icons';
+import { AppLogo, CheckIcon } from '../../components/common/Icons';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -46,11 +46,11 @@ function FieldError({ message }) {
   );
 }
 
-export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
+export default function LoginScreen({ onLoggedIn, onCreateAccount, onForgotPassword, initialEmail = '', notice = '' }) {
   const insets = useSafeAreaInsets();
   const passwordRef = useRef(null);
 
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focused, setFocused] = useState(null);
@@ -81,13 +81,6 @@ export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleForgotPassword = () => {
-    Alert.alert(
-      'Forgot password',
-      'Password reset is not available in this version yet. Please contact the LocalAlert team for help.'
-    );
   };
 
   const inputStyle = (field) => [
@@ -123,6 +116,13 @@ export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
           {/* Form */}
           <View style={styles.form}>
             <Text style={styles.heading} accessibilityRole="header">Welcome back</Text>
+
+            {notice && !formError ? (
+              <View style={styles.noticeBox} accessibilityLiveRegion="polite">
+                <CheckIcon size={14} color={colors.white} />
+                <Text style={styles.noticeText}>{notice}</Text>
+              </View>
+            ) : null}
 
             {formError ? (
               <View style={styles.formErrorBox} accessibilityRole="alert">
@@ -198,7 +198,7 @@ export default function LoginScreen({ onLoggedIn, onCreateAccount }) {
 
             <Pressable
               style={styles.forgot}
-              onPress={handleForgotPassword}
+              onPress={() => onForgotPassword?.(email.trim())}
               hitSlop={8}
               accessibilityRole="button"
             >
@@ -271,6 +271,15 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
   },
   formErrorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },
+  noticeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: colors.blue,
+  },
+  noticeText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.white },
 
   field: { gap: 6 },
   label: { fontSize: 13, fontWeight: '600', color: colors.ink2 },

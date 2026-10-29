@@ -43,6 +43,22 @@ export async function register(details) {
   return saveSession(data);
 }
 
+// Forgot password, step 1: emails a 6-digit code (same reply whether or not the account exists).
+export async function requestPasswordReset(email) {
+  return apiRequest('/auth/forgot-password', {
+    method: 'POST',
+    body: { email: email.trim().toLowerCase() },
+  });
+}
+
+// Forgot password, step 2: sets the new password. Other logins are signed out.
+export async function resetPassword(email, code, newPassword) {
+  return apiRequest('/auth/reset-password', {
+    method: 'POST',
+    body: { email: email.trim().toLowerCase(), code, new_password: newPassword },
+  });
+}
+
 export async function getSession() {
   const [[, token], [, userJson]] = await AsyncStorage.multiGet([TOKEN_KEY, USER_KEY]);
   if (!token || !userJson) return null;

@@ -22,7 +22,8 @@ class AuthError extends Error {
 
 function issueToken(user) {
     return jwt.sign(
-        { sub: user.user_id, role: user.role_name },
+        // tv (token version) changes when the password is reset, which signs out older logins.
+        { sub: user.user_id, role: user.role_name, tv: user.token_version || 0 },
         jwtConfig.secret,
         { expiresIn: jwtConfig.expiresIn }
     );
@@ -152,5 +153,6 @@ module.exports = {
     register,
     login,
     issueToken,
+    passwordProblem,
     AuthError,
 };

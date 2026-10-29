@@ -1,17 +1,30 @@
 /*
 Checks the JWT on protected routes and puts { id, role } on req.user.
+A token is also refused when the account was deleted, or when the password was
+reset after the token was issued (its token version no longer matches).
 */
 const jwt = require("jsonwebtoken");
 const jwtConfig = require("../config/jwt");
+const User = require("../models/User");
 
-function verify(token, req, res, next) {
+const EXPIRED = { success: false, message: "Your session has expired. Please log in again." };
+
+async function verify(token, req, res, next) {
+    let payload;
     try {
-        const payload = jwt.verify(token, jwtConfig.secret);
-        req.user = { id: payload.sub, role: payload.role };
-        next();
+        payload = jwt.verify(token, jwtConfig.secret);
     } catch {
-        return res.status(401).json({ success: false, message: "Your session has expired. Please log in again." });
+        return res.status(401).json(EXPIRED);
     }
+    try {
+        const version = await User.findTokenVersion(payload.sub);
+        if (version === null || version !== (payload.tv || 0)) return res.status(401).json(EXPIRED);
+    } catch (error) {
+        console.error("Session check failed:", error.message);
+        return res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+    req.user = { id: payload.sub, role: payload.role };
+    next();
 }
 
 function requireAuth(req, res, next) {

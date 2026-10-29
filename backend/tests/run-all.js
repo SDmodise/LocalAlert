@@ -1,6 +1,10 @@
 /*
-npm test: makes sure the test database exists, then runs every *.test.js file
-one after another and prints a summary. Exit code 1 if any test fails.
+npm test: brings the test database up to date with db/, then runs every *.test.js
+file one after another and prints a summary. Exit code 1 if any test fails.
+
+  npm test                  all tests
+  npm test -- share         only files whose name contains "share"
+  npm test -- --fresh       rebuild the test database first
 */
 const fs = require("fs");
 const path = require("path");
@@ -8,8 +12,9 @@ const { spawnSync } = require("child_process");
 const createTestDb = require("./create-test-db");
 
 (async () => {
-    await createTestDb();
-    const only = process.argv[2];
+    const args = process.argv.slice(2);
+    await createTestDb({ fresh: args.includes("--fresh") });
+    const only = args.find((a) => !a.startsWith("--"));
     const files = fs.readdirSync(__dirname)
         .filter((f) => f.endsWith(".test.js") && (!only || f.includes(only)))
         .sort();

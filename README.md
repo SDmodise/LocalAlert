@@ -107,7 +107,7 @@ Scan the QR code with Expo Go. The phone and the computer must be on the same Wi
 |---|---|---|
 | backend | `npm run dev` | Starts the API and restarts it when code changes |
 | backend | `npm test` | Runs all integration tests on a separate test database |
-| backend | `npm run test:db -- --fresh` | Rebuilds the test database (after adding a `db/` script) |
+| backend | `npm test -- --fresh` | Rebuilds the test database from scratch, then runs the tests |
 | backend | `npm run escalation-status` | Shows each open alert's level and when it moves up next |
 | backend | `npm run tunnel` | Makes the API reachable from other networks (localtunnel) |
 | frontend | `npm run lan` | Starts the app for phones on the same Wi-Fi |
@@ -123,8 +123,8 @@ Scan the QR code with Expo Go. The phone and the computer must be on the same Wi
 
 ## Tests
 
-`npm test` (in `backend`) creates a test database called `<DB_NAME>_test` from the `db/` scripts the first
-time, then runs every file in `backend/tests/`. The tests cover sign-up and municipalities, creating alerts
+`npm test` (in `backend`) creates a test database called `<DB_NAME>_test` from the `db/` scripts (and runs any
+new ones you add later), then runs every file in `backend/tests/`. The tests cover sign-up and municipalities, creating alerts
 and escalation, sightings and marking as found, sharing links, notifications, profile editing and removal,
 deleting accounts and photo access. They use a temporary uploads folder and never send emails, so your real
 data is not touched.

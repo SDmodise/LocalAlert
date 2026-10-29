@@ -18,7 +18,7 @@ async function findUserByEmail(email) {
 async function findUserWithRoleByEmail(email) {
     const query = `
         SELECT u.user_id, u.first_name, u.last_name, u.email,
-               u.password_hash, r.role_name
+               u.password_hash, u.token_version, r.role_name
         FROM users u
         JOIN roles r ON r.role_id = u.role_id
         WHERE lower(u.email) = $1;
@@ -153,7 +153,14 @@ async function deleteAccount(userId) {
     }
 }
 
+// Used on every signed-in request: null when the account no longer exists.
+async function findTokenVersion(userId) {
+    const result = await pool.query(`SELECT token_version FROM users WHERE user_id = $1;`, [userId]);
+    return result.rows[0] ? result.rows[0].token_version : null;
+}
+
 module.exports = {
+    findTokenVersion,
     findPasswordHash,
     countOpenAlertsCreatedBy,
     deleteAccount,

@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 
 import LoginScreen from './src/screens/auth/LoginScreen';
 import SignUpScreen from './src/screens/auth/SignUpScreen';
+import ForgotPasswordScreen from './src/screens/auth/ForgotPasswordScreen';
 import AlertsScreen from './src/screens/alerts/AlertsScreen';
 import FamilyScreen from './src/screens/family/FamilyScreen';
 import NotificationsScreen from './src/screens/account/NotificationsScreen';
@@ -138,7 +139,9 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened }) {
 export default function App() {
   const [booting, setBooting] = useState(true);
   const [user, setUser] = useState(null);
-  const [authScreen, setAuthScreen] = useState('login'); // 'login' | 'signup'
+  const [authScreen, setAuthScreen] = useState('login'); // 'login' | 'signup' | 'forgot'
+  const [authEmail, setAuthEmail] = useState(''); // carried between login and forgot password
+  const [loginNotice, setLoginNotice] = useState(''); // shown on login after a password reset
   const lastLocationRefresh = useRef(0);
   const [pendingShareCode, setPendingShareCode] = useState(null); // from a shared link
   const [openAlert, setOpenAlert] = useState(null); // { id, key } to show on the Alerts tab
@@ -230,14 +233,34 @@ export default function App() {
         }}
       />
     );
+  } else if (authScreen === 'forgot') {
+    content = (
+      <ForgotPasswordScreen
+        initialEmail={authEmail}
+        onBack={() => setAuthScreen('login')}
+        onDone={(email) => {
+          setAuthEmail(email);
+          setLoginNotice('Password changed. Log in with your new password.');
+          setAuthScreen('login');
+        }}
+      />
+    );
   } else {
     content = (
       <LoginScreen
+        initialEmail={authEmail}
+        notice={loginNotice}
         onLoggedIn={(loggedIn) => {
           lastLocationRefresh.current = 0;
+          setLoginNotice('');
           setUser(loggedIn);
         }}
         onCreateAccount={() => setAuthScreen('signup')}
+        onForgotPassword={(email) => {
+          setAuthEmail(email);
+          setLoginNotice('');
+          setAuthScreen('forgot');
+        }}
       />
     );
   }
