@@ -4,19 +4,19 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import LoginScreen from './screens/LoginScreen';
-import SignUpScreen from './screens/SignUpScreen';
-import AlertsScreen from './screens/AlertsScreen';
-import FamilyScreen from './screens/FamilyScreen';
-import NotificationsScreen from './screens/NotificationsScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import TabBar from './components/navigation/TabBar';
-import { getSession, logout } from './services/auth';
-import { setUnauthorizedHandler } from './services/api';
-import { refreshCurrentMunicipality } from './services/users';
-import { followSharedAlert, shareCodeFromUrl } from './services/alerts';
-import { getNotifications, getUnreadCount } from './services/notifications';
-import { colors } from './theme';
+import LoginScreen from './src/screens/auth/LoginScreen';
+import SignUpScreen from './src/screens/auth/SignUpScreen';
+import AlertsScreen from './src/screens/alerts/AlertsScreen';
+import FamilyScreen from './src/screens/family/FamilyScreen';
+import NotificationsScreen from './src/screens/account/NotificationsScreen';
+import ProfileScreen from './src/screens/account/ProfileScreen';
+import TabBar from './src/components/navigation/TabBar';
+import { getSession, logout } from './src/services/auth';
+import { setUnauthorizedHandler } from './src/services/api';
+import { refreshCurrentMunicipality } from './src/services/users';
+import { followSharedAlert, shareCodeFromUrl } from './src/services/alerts';
+import { getNotifications, getUnreadCount } from './src/services/notifications';
+import { colors } from './src/theme';
 
 const LOCATION_REFRESH_MS = 10 * 60 * 1000; // at most every 10 minutes
 

@@ -1,13 +1,16 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "LocalAlert API: Express + PostgreSQL backend for the LocalAlert missing-person alert app",
+  "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test": "node tests/run-all.js",
+    "test:db": "node tests/create-test-db.js",
     "tunnel": "npx localtunnel --port 5000 --subdomain localalert-sdmodise",
-    "escalation-status": "node scripts/escalation-status.js"
+    "escalation-status": "node scripts/escalation-status.js",
+    "create-test-user": "node scripts/createTestUser.js"
   },
   "keywords": [],
   "author": "",

@@ -56,7 +56,7 @@ async function login({ email, password } = {}) {
     };
 }
 
-const ROLES = ["Family Administrator", "Community Member"];
+const { ADMIN, ALL_ROLES: ROLES } = require("../config/roles");
 const NAME_PATTERN = /^[A-Za-zÀ-ÿ' -]{1,50}$/;
 
 function passwordProblem(password) {
@@ -92,7 +92,7 @@ async function register(body = {}) {
     }
 
     let pinHash = null;
-    if (role === "Family Administrator") {
+    if (role === ADMIN) {
         if (!/^[0-9]{4}$/.test(String(body.pin || ""))) {
             throw new AuthError("Your PIN must be exactly 4 digits.", 400);
         }

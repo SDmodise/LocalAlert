@@ -5,7 +5,7 @@ const { profileUpload } = require("../middleware/uploadMiddleware");
 const family = require("../controllers/familyController");
 const invitation = require("../controllers/invitationController");
 
-const ADMIN = "Family Administrator";
+const { ADMIN } = require("../config/roles");
 
 // /api/family-groups
 const groups = express.Router();

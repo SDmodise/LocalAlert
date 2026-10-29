@@ -7,7 +7,7 @@ require("dotenv").config();
 
 const app = require("./app");
 const pool = require("./config/database");
-const escalation = require("./services/alertServices");
+const escalation = require("./services/escalationService");
 
 const PORT = process.env.PORT || 5000;
 

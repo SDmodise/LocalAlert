@@ -5,7 +5,7 @@ Shows the escalation status of every open alert, straight from the database.
 */
 require("dotenv").config({ quiet: true });
 const pool = require("../src/config/database");
-const escalation = require("../src/services/alertServices");
+const escalation = require("../src/services/escalationService");
 
 const sast = (d) => new Date(d).toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", dateStyle: "medium", timeStyle: "short" });
 

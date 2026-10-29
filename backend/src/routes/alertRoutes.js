@@ -5,7 +5,7 @@ const { alertPhotoUpload, sightingUpload } = require("../middleware/uploadMiddle
 const alerts = require("../controllers/alertController");
 const share = require("../controllers/shareController");
 
-const ADMIN = "Family Administrator";
+const { ADMIN } = require("../config/roles");
 const router = express.Router();
 
 router.get("/", requireAuth, alerts.list);
