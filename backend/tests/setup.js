@@ -20,6 +20,13 @@ process.env.TEST_DB_NAME = process.env.TEST_DB_NAME || `${process.env.DB_NAME}_t
 process.env.DB_NAME = process.env.TEST_DB_NAME;
 process.env.DOTENV_CONFIG_QUIET = "true";
 process.env.JWT_SECRET = process.env.JWT_SECRET || "local-test-secret";
+
+// Settings from .env that would change what the tests expect: share links use the
+// test server's own address, and escalation uses the normal 6-hour step.
+// (Tests that need PUBLIC_BASE_URL set it themselves.)
+process.env.PUBLIC_BASE_URL = "";
+process.env.ESCALATION_INTERVAL_MINUTES = "";
+
 // Never send real emails while testing.
 delete process.env.SMTP_HOST;
 delete process.env.SMTP_USER;
