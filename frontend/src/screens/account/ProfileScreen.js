@@ -24,6 +24,7 @@ import { ChevronIcon, InfoIcon } from '../../components/common/Icons';
 import { getMyProfile, refreshCurrentMunicipality } from '../../services/users';
 import JoinFamilyScreen from '../family/JoinFamilyScreen';
 import DeleteAccountScreen from './DeleteAccountScreen';
+import ChangePinScreen from './ChangePinScreen';
 
 const ADMIN = 'Family Administrator';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -87,6 +88,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [joining, setJoining] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [changingPin, setChangingPin] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -135,6 +137,10 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
 
   if (joining) {
     return <JoinFamilyScreen onBack={() => setJoining(false)} />;
+  }
+
+  if (changingPin) {
+    return <ChangePinScreen onBack={() => setChangingPin(false)} onDone={() => setChangingPin(false)} />;
   }
 
   if (deleting) {
@@ -203,7 +209,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
 
         <View style={styles.card}>
           <SettingRow title="Join a family group" onPress={() => setJoining(true)} />
-          {isAdmin && <SettingRow title="Change PIN" note="Coming soon" />}
+          {isAdmin && <SettingRow title="Change PIN" onPress={() => setChangingPin(true)} />}
           <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} />
           <SettingRow title="Delete account" onPress={() => setDeleting(true)} last />
         </View>

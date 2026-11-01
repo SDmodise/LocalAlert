@@ -153,6 +153,18 @@ async function deleteAccount(userId) {
     }
 }
 
+async function findPinHash(userId) {
+    const result = await pool.query(`SELECT pin_hash FROM users WHERE user_id = $1;`, [userId]);
+    return result.rows[0]?.pin_hash || null;
+}
+
+async function updatePinHash(userId, pinHash) {
+    await pool.query(
+        `UPDATE users SET pin_hash = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1;`,
+        [userId, pinHash]
+    );
+}
+
 // Used on every signed-in request: null when the account no longer exists.
 async function findTokenVersion(userId) {
     const result = await pool.query(`SELECT token_version FROM users WHERE user_id = $1;`, [userId]);
@@ -160,6 +172,8 @@ async function findTokenVersion(userId) {
 }
 
 module.exports = {
+    findPinHash,
+    updatePinHash,
     findTokenVersion,
     findPasswordHash,
     countOpenAlertsCreatedBy,

@@ -131,4 +131,16 @@ async function sendPasswordChangedEmail({ to, firstName }) {
     return send({ to, subject: "Your LocalAlert password was changed", text, html }, "password changed notice");
 }
 
-module.exports = { isConfigured, sendInvitationEmail, sendPasswordResetCode, sendPasswordChangedEmail };
+async function sendPinChangedEmail({ to, firstName }) {
+    if (!isConfigured()) return false;
+    const text =
+        `Hi ${firstName},\n\nThe PIN for your LocalAlert account was just changed. You use it to send alerts and to confirm changes to your family's profiles.\n\n` +
+        `If this was not you, log in and change your password and PIN straight away.`;
+    const html = layout(`
+    <p style="font-size:16px;margin-top:0">Hi ${escapeHtml(firstName)},</p>
+    <p style="color:#4A5B78">The PIN for your LocalAlert account was just changed. You use it to send alerts and to confirm changes to your family's profiles.</p>
+    <p style="color:#4A5B78"><b>If this was not you</b>, log in and change your password and PIN straight away.</p>`);
+    return send({ to, subject: "Your LocalAlert PIN was changed", text, html }, "PIN changed notice");
+}
+
+module.exports = { isConfigured, sendInvitationEmail, sendPasswordResetCode, sendPasswordChangedEmail, sendPinChangedEmail };

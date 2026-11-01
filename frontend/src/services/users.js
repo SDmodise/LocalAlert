@@ -38,3 +38,10 @@ export async function refreshCurrentMunicipality({ askPermission = false } = {})
 export async function deleteMyAccount(password) {
   return apiRequest('/users/me', { method: 'DELETE', token: await getToken(), body: { password } });
 }
+
+// Family Administrators: changes the PIN, confirmed with the current PIN
+// ({ currentPin }) or, if it was forgotten, with the password ({ password }).
+export async function changeMyPin({ currentPin, password, newPin }) {
+  const body = password ? { password, new_pin: newPin } : { current_pin: currentPin, new_pin: newPin };
+  return apiRequest('/users/me/pin', { method: 'PUT', token: await getToken(), body });
+}

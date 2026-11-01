@@ -58,4 +58,9 @@ async function requirePin(req, res, pin) {
     return null;
 }
 
-module.exports = { verifyPin, requirePin };
+// After the PIN is changed with the password, earlier wrong PIN attempts no longer count.
+function clearPinLock(userId) {
+    pinAttempts.delete(userId);
+}
+
+module.exports = { verifyPin, requirePin, clearPinLock };
