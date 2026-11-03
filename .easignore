@@ -1,0 +1,39 @@
+# Files EAS Build does NOT upload when building the app (used instead of .gitignore).
+# Same as .gitignore, except frontend/google-services.json, which the Android build needs.
+# Keep the two lists in step when adding to .gitignore.
+
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+.env
+.env.local
+.env.*.local
+
+*.log
+
+.idea/
+.vscode/
+
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+*.db
+*.sqlite
+*.sqlite3
+
+.DS_Store
+Thumbs.db
+# Uploaded photos and ID documents (personal information)
+backend/uploads/
+expo-temp/
+
+# Project documents (proposal, reports, diagrams, logo files) stay on this computer only
+docs/
+
+# Push notifications: Firebase settings and keys stay on this computer.
+*firebase-adminsdk*.json

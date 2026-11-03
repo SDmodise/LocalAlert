@@ -1,0 +1,12 @@
+# Files EAS Build does NOT upload (used instead of .gitignore when building the app).
+# Same as .gitignore, except google-services.json, which the Android build needs.
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+.env
+.env.local
+.env.*.local
+*.log
+*firebase-adminsdk*.json

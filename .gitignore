@@ -30,3 +30,8 @@ expo-temp/
 
 # Project documents (proposal, reports, diagrams, logo files) stay on this computer only
 docs/
+
+# Push notifications: Firebase settings and keys stay on this computer.
+# (google-services.json still goes to EAS Build through frontend/.easignore.)
+frontend/google-services.json
+*firebase-adminsdk*.json
