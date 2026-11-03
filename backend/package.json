@@ -11,6 +11,8 @@
     "tunnel": "npx localtunnel --port 5000 --subdomain localalert-sdmodise",
     "share-tunnel": "node scripts/share-tunnel.js",
     "escalation-status": "node scripts/escalation-status.js",
+    "check-email": "node scripts/check-email.js",
+    "push-status": "node scripts/push-status.js",
     "create-test-user": "node scripts/createTestUser.js"
   },
   "keywords": [],

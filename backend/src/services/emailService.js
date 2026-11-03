@@ -151,4 +151,17 @@ async function sendPinChangedEmail({ to, firstName }) {
     return send({ to, subject: "Your LocalAlert PIN was changed", text, html }, "PIN changed notice");
 }
 
-module.exports = { isConfigured, sendInvitationEmail, sendPasswordResetCode, sendPasswordChangedEmail, sendPinChangedEmail };
+// For "npm run check-email": sends a test message and returns the real error, if any.
+async function sendTestEmail(to) {
+    const transporter = await getTransporter();
+    await transporter.verify(); // connects and logs in, so a bad password shows up here
+    await transporter.sendMail({
+        from: process.env.MAIL_FROM || process.env.SMTP_USER,
+        to,
+        subject: "LocalAlert test email",
+        text: "This is a test from LocalAlert. If you can read this, email sending works.",
+        html: layout('<p style="margin-top:0">This is a test from LocalAlert.</p><p style="color:#4A5B78">If you can read this, email sending works.</p>'),
+    });
+}
+
+module.exports = { isConfigured, sendInvitationEmail, sendPasswordResetCode, sendPasswordChangedEmail, sendPinChangedEmail, sendTestEmail };
