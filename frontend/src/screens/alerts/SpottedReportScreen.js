@@ -7,7 +7,6 @@ import {
   Alert as NativeAlert,
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -118,7 +117,7 @@ export default function SpottedReportScreen({ alert, onBack, onSent }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <SubHeader title="Report a sighting" onBack={onBack} disabled={sending} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
           <View style={styles.summary}>
             <AuthImage

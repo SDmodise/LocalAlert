@@ -9,7 +9,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -199,7 +198,7 @@ function AlertForm({ initial, onBack, onContinue }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <SubHeader title="Report missing person" onBack={onBack} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>Who is missing?</Text>
           {!profiles && !loadError ? <ActivityIndicator color={colors.blue} style={{ marginVertical: 12 }} /> : null}

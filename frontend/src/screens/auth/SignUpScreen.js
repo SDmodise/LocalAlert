@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   BackHandler,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -228,7 +227,7 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
         <Text style={styles.stepText}>Step {step} of 3</Text>
       </View>
 
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]}

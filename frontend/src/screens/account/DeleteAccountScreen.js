@@ -3,7 +3,7 @@ Profile > Delete account. Permanently deletes the account and the personal
 information that belongs to it (POPIA). Needs the password and a final confirmation.
 */
 import React, { useState } from 'react';
-import { Alert as NativeAlert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert as NativeAlert, KeyboardAvoidingView,  ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius } from '../../theme';
@@ -63,7 +63,7 @@ export default function DeleteAccountScreen({ isAdmin, onBack, onDeleted }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <SubHeader title="Delete account" onBack={onBack} disabled={busy} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
           <View style={styles.warning}>
             <InfoIcon size={20} color={colors.white} />

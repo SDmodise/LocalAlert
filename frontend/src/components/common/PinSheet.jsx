@@ -4,7 +4,7 @@ Bottom sheet asking for the 4-digit PIN to confirm a sensitive action
 an error with a message if the server rejects it; the sheet then shows it.
 */
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Modal,  Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius } from '../../theme';
 import Button from './Button';
@@ -35,7 +35,7 @@ export default function PinSheet({ visible, title, message, confirmTitle = 'Conf
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={busy ? undefined : onCancel}>
-      <KeyboardAvoidingView style={styles.backdrop} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
         <Pressable style={styles.flex} onPress={busy ? undefined : onCancel} accessibilityLabel="Cancel" />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
           <Text style={styles.title}>{title}</Text>

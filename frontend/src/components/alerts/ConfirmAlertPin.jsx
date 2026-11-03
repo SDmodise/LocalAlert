@@ -3,7 +3,7 @@ Screen 15: the administrator enters their PIN and the alert is sent.
 The server checks the PIN; the alert only goes out if it is right.
 */
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView,  Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme';
@@ -46,7 +46,7 @@ export default function ConfirmAlertPin({ draft, onCancel, onSent }) {
 
   return (
     <View style={[styles.blueRoot, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
-      <KeyboardAvoidingView style={styles.pinWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.pinWrap} behavior="padding">
         <View style={styles.lockCircle}><PinIcon size={34} color={colors.white} /></View>
         <Text style={styles.pinTitle}>Enter your PIN to send</Text>
         <Text style={styles.pinBody}>

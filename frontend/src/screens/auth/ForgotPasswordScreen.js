@@ -7,7 +7,7 @@ Then back to the login screen with the email filled in.
 The server gives the same reply whether or not the email has an account.
 */
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView,  Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -112,7 +112,7 @@ export default function ForgotPasswordScreen({ initialEmail = '', onBack, onDone
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
       <SubHeader title="Forgot password" onBack={step === 'reset' ? () => { setStep('email'); setFormError(''); setErrors({}); } : onBack} disabled={busy} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}
           keyboardShouldPersistTaps="handled"

@@ -4,7 +4,7 @@ The family administrator shows a single-use QR code (valid 24 hours) or sends an
 in-app invitation to an email address or phone number.
 */
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -90,6 +90,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <SubHeader title="Link a family member" onBack={onBack} />
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]} keyboardShouldPersistTaps="handled">
         <View style={styles.segment} accessibilityRole="tablist">
           {[['qr', 'QR code'], ['invite', 'Send invitation']].map(([key, label]) => (
@@ -160,6 +161,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
           </>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert as NativeAlert,
+  KeyboardAvoidingView,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -245,6 +246,7 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
     return (
       <View style={root}>
         <ScreenHeader title="Family Link" />
+        <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.createContent} keyboardShouldPersistTaps="handled">
           <InvitationsCard count={invitations} onOpen={() => join(true)} />
           <View style={styles.illustration}><FamilyTabIcon size={44} active /></View>
@@ -265,6 +267,7 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
           />
           <Button title="Create family group" onPress={createGroup} loading={creating} />
         </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     );
   }

@@ -8,7 +8,7 @@ The server checks the current PIN (or password) when the change is sent:
 PUT /api/users/me/pin.
 */
 import React, { useState } from 'react';
-import { Alert as NativeAlert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert as NativeAlert, KeyboardAvoidingView,  Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors } from '../../theme';
@@ -123,7 +123,7 @@ export default function ChangePinScreen({ onBack, onDone }) {
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <SubHeader title="Change PIN" onBack={back} disabled={busy} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
           <Text style={styles.stepText}>Step {STEPS[step]} of 3</Text>
           <Text style={styles.heading} accessibilityRole="header">{title}</Text>

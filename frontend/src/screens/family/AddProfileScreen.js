@@ -10,7 +10,6 @@ import {
   BackHandler,
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -175,7 +174,7 @@ export default function AddProfileScreen({ groupId, onCancel, onSaved }) {
         <Text style={styles.title} accessibilityRole="header">Add profile</Text>
       </View>
 
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]}
           keyboardShouldPersistTaps="handled"

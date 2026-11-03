@@ -10,7 +10,6 @@ import {
   Alert as NativeAlert,
   Image,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -175,7 +174,7 @@ export default function ProfileDetailsScreen({ profile: initialProfile, onBack, 
         onBack={editing ? () => setEditing(false) : onBack}
         close={editing}
       />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]} keyboardShouldPersistTaps="handled">
           {/* Photo */}
           <View style={styles.photoWrap}>
