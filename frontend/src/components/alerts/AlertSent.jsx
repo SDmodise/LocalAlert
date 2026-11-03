@@ -6,7 +6,7 @@ import React from 'react';
 import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius } from '../../theme';
+import { colors, levelColor, radius } from '../../theme';
 import Button from '../common/Button';
 import AuthImage from '../common/AuthImage';
 import { CheckIcon, FamilyTabIcon, PersonSilhouette } from '../common/Icons';
@@ -18,11 +18,12 @@ const firstName = (name) => (name || '').trim().split(/\s+/)[0];
 const people = (n) => `${n} ${n === 1 ? 'person' : 'people'}`;
 const users = (n) => `${n} ${n === 1 ? 'user' : 'users'}`;
 
-function LevelRow({ badge, title, meta, done }) {
+function LevelRow({ badge, title, meta, done, level }) {
+  const tone = level ? levelColor(level) : null;
   return (
     <View style={styles.card}>
-      <View style={[styles.badge, done && typeof badge === 'string' ? styles.badgeOn : styles.badgeOff]}>
-        {typeof badge === 'string' ? <Text style={[styles.badgeText, done && { color: colors.white }]}>{badge}</Text> : badge}
+      <View style={[styles.badge, done && typeof badge === 'string' ? (tone ? { backgroundColor: tone.bg } : styles.badgeOn) : styles.badgeOff]}>
+        {typeof badge === 'string' ? <Text style={[styles.badgeText, done && { color: tone ? tone.fg : colors.white }]}>{badge}</Text> : badge}
       </View>
       <View style={styles.flex}>
         <Text style={styles.cardTitle}>{title}</Text>
@@ -75,10 +76,10 @@ export default function AlertSent({ result, onDone }) {
         <Text style={styles.hint}>Sharing sends a LocalAlert link, so everyone always sees the latest details and photo.</Text>
         <Text style={styles.label}>Who has been told</Text>
         <LevelRow badge={<FamilyTabIcon size={22} active />} title="Linked family" meta={reach.family ? `${people(reach.family)} · immediately` : 'No linked family members yet'} done={reach.family > 0} />
-        <LevelRow badge="L1" title={alert.municipality_name} meta={`${users(reach.levels[0].users)} · now`} done />
+        <LevelRow badge="L1" level={1} title={alert.municipality_name} meta={`${users(reach.levels[0].users)} · now`} done />
         {reach.levels.slice(1).map((l, i) =>
           l.status === 'sent' || i + 1 === nextIndex ? (
-            <LevelRow key={l.level} badge={`L${l.level}`} title={levelTitle(l)} meta={levelMeta(l)} done={l.status === 'sent'} />
+            <LevelRow key={l.level} badge={`L${l.level}`} level={l.level} title={levelTitle(l)} meta={levelMeta(l)} done={l.status === 'sent'} />
           ) : null
         )}
         {nextIndex > 0 && nextIndex < 3 ? (

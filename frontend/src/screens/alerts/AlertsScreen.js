@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius } from '../../theme';
+import { colors, levelColor, radius } from '../../theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
@@ -62,8 +62,8 @@ function AlertCard({ alert, onPress }) {
           <Text style={[styles.name, styles.flex]} numberOfLines={1}>
             {alert.child_name}{alert.age !== null ? `, ${alert.age}` : ''}
           </Text>
-          <View style={[styles.chip, resolved ? styles.chipLight : still || alert.escalation_level >= 4 ? styles.chipDark : alert.escalation_level >= 2 ? styles.chipSolid : styles.chipLight]}>
-            <Text style={[styles.chipText, { color: resolved || (!still && alert.escalation_level < 2) ? colors.blue : colors.white }]}>
+          <View style={[styles.chip, resolved ? styles.chipLight : still ? styles.chipDark : { backgroundColor: levelColor(alert.escalation_level).bg }]}>
+            <Text style={[styles.chipText, { color: resolved ? colors.blue : still ? colors.white : levelColor(alert.escalation_level).fg }]}>
               {resolved ? 'Found' : still ? 'Still missing' : `Level ${alert.escalation_level}`}
             </Text>
           </View>

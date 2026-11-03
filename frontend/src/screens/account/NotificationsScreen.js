@@ -8,7 +8,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius } from '../../theme';
+import { colors, levelColor, radius } from '../../theme';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
@@ -44,7 +44,8 @@ function TypeBadge({ n }) {
     return <View style={[styles.typeBadge, { backgroundColor: colors.blue }]}><CheckIcon size={10} /></View>;
   }
   if (n.notification_type === 'escalation') {
-    return <View style={[styles.typeBadge, { backgroundColor: colors.blueDark }]}><Text style={styles.typeText}>L{n.escalation_level}</Text></View>;
+    const tone = levelColor(n.escalation_level);
+    return <View style={[styles.typeBadge, { backgroundColor: tone.bg }]}><Text style={[styles.typeText, { color: tone.fg }]}>L{n.escalation_level}</Text></View>;
   }
   if (n.notification_type === 'spotted_report') {
     return <View style={[styles.typeBadge, { backgroundColor: colors.blue }]}><PinIcon size={11} color={colors.white} /></View>;

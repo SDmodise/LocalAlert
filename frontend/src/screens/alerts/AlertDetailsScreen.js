@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Linking,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -23,7 +22,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius } from '../../theme';
+import { colors, levelColor, radius } from '../../theme';
 import Button from '../../components/common/Button';
 import SubHeader from '../../components/common/SubHeader';
 import EmptyState from '../../components/common/EmptyState';
@@ -118,8 +117,8 @@ function CommunityView({ alert, onSighting, refresh }) {
           style={styles.bigPhoto}
           fallback={<PersonSilhouette size={110} />}
         />
-        <View style={[styles.heroChip, still && { backgroundColor: colors.blueDark }]}>
-          <Text style={styles.heroChipText}>{still ? 'STILL MISSING' : 'MISSING'} · LEVEL {alert.escalation_level}</Text>
+        <View style={[styles.heroChip, { backgroundColor: levelColor(alert.escalation_level).bg }]}>
+          <Text style={[styles.heroChipText, { color: levelColor(alert.escalation_level).fg }]}>{still ? 'STILL MISSING' : 'MISSING'} · LEVEL {alert.escalation_level}</Text>
         </View>
       </View>
       <View style={styles.body}>
@@ -185,8 +184,8 @@ function Timeline({ alert, reach }) {
           <View key={l.level} style={styles.step}>
             <View style={styles.stepTrack}>
               {i > 0 ? <View style={[styles.stepLine, done && styles.stepLineOn]} /> : <View style={styles.stepLineBlank} />}
-              <View style={[styles.stepDot, done ? styles.stepDotOn : styles.stepDotOff]}>
-                <Text style={[styles.stepDotText, done && { color: colors.white }]}>L{l.level}</Text>
+              <View style={[styles.stepDot, done ? { backgroundColor: levelColor(l.level).bg } : styles.stepDotOff]}>
+                <Text style={[styles.stepDotText, done && { color: levelColor(l.level).fg }]}>L{l.level}</Text>
               </View>
               {i < reach.levels.length - 1 ? <View style={[styles.stepLine, reach.levels[i + 1].status === 'sent' && styles.stepLineOn]} /> : <View style={styles.stepLineBlank} />}
             </View>
@@ -328,7 +327,7 @@ function ResolvePin({ alert, onCancel, onResolved }) {
 
   return (
     <View style={[styles.blueRoot, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 16 }]}>
-      <KeyboardAvoidingView style={styles.pinWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.pinWrap} behavior="padding">
         <View style={styles.lockCircle}><CheckIcon size={30} /></View>
         <Text style={styles.pinTitle}>Mark {firstName(alert.child_name)} as found?</Text>
         <Text style={styles.pinBody}>

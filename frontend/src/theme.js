@@ -18,6 +18,19 @@ export const colors = {
   dangerTint: '#FEF3F2',  // background of error boxes
 };
 
+// Alert levels get warmer as the search widens:
+// 1 the alert's own area (blue), 2 neighbours (amber), 3 wider area (red), 4 all users (dark red).
+export const levelColors = {
+  1: { bg: '#1559D6', fg: '#FFFFFF' },
+  2: { bg: '#F79009', fg: '#0B1A33' }, // dark text: white is hard to read on amber
+  3: { bg: '#D92D20', fg: '#FFFFFF' },
+  4: { bg: '#7A1A12', fg: '#FFFFFF' },
+};
+
+export function levelColor(level) {
+  return levelColors[Math.min(Math.max(Number(level) || 1, 1), 4)];
+}
+
 export const radius = { field: 12, button: 14, card: 16, chip: 999 };
 
 export const type = {

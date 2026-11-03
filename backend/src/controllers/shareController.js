@@ -146,6 +146,7 @@ main{max-width:520px;margin:0 auto;padding:16px}
 .content{padding:18px;display:grid;gap:12px}
 .chip{display:inline-block;border-radius:999px;padding:5px 11px;font-size:12px;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--blue)}
 .chip.dark{background:var(--dark)}.chip.found{background:var(--light);color:var(--blue)}
+.chip.l2{background:#F79009;color:#0B1A33}.chip.l3{background:#D92D20}.chip.l4{background:#7A1A12}
 h1{margin:0;font-size:26px}.sub{color:var(--ink2);margin-top:-6px}
 .row{background:var(--tint);border:1.5px solid var(--line);border-radius:12px;padding:12px}
 .label{font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
@@ -211,7 +212,7 @@ async function publicPage(req, res) {
             body: `<div class="card">
 ${image ? `<img class="photo" src="${esc(image)}" alt="Photo of ${esc(a.child_name)}">` : ""}
 <div class="content">
-<div><span class="chip ${still ? "dark" : ""}">${still ? "STILL MISSING" : "MISSING"} · LEVEL ${a.escalation_level}</span></div>
+<div><span class="chip l${Math.min(Math.max(a.escalation_level, 1), 4)}">${still ? "STILL MISSING" : "MISSING"} · LEVEL ${a.escalation_level}</span></div>
 <h1>${esc(a.child_name)}</h1>
 <div class="sub">${esc(age)}${esc(personWord(a))}</div>
 <div class="row"><div class="label">Last seen</div><div class="value">${esc(where)}${a.last_seen_time ? ` · ${esc(sast(a.last_seen_time))}` : ""}</div>${area ? `<div class="note" style="text-align:left;margin-top:4px">${esc(area)}</div>` : ""}</div>
