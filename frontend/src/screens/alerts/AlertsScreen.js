@@ -62,9 +62,9 @@ function AlertCard({ alert, onPress }) {
           <Text style={[styles.name, styles.flex]} numberOfLines={1}>
             {alert.child_name}{alert.age !== null ? `, ${alert.age}` : ''}
           </Text>
-          <View style={[styles.chip, resolved ? styles.chipLight : still ? styles.chipDark : { backgroundColor: levelColor(alert.escalation_level).bg }]}>
-            <Text style={[styles.chipText, { color: resolved ? colors.blue : still ? colors.white : levelColor(alert.escalation_level).fg }]}>
-              {resolved ? 'Found' : still ? 'Still missing' : `Level ${alert.escalation_level}`}
+          <View style={[styles.chip, resolved ? styles.chipLight : { backgroundColor: levelColor(alert.escalation_level).bg }]}>
+            <Text style={[styles.chipText, { color: resolved ? colors.blue : levelColor(alert.escalation_level).fg }]}>
+              {resolved ? 'Found' : still ? `Still missing · L${alert.escalation_level}` : `Level ${alert.escalation_level}`}
             </Text>
           </View>
         </View>

@@ -93,13 +93,16 @@ function Detail({ label, value }) {
   );
 }
 
+// Status chip on the family's alert screen. Like the Alerts list, it uses the
+// level colour (blue, amber, red, dark red) and shows the level; "Resolved" stays light.
 function StatusChip({ alert }) {
   const resolved = alert.status === 'resolved';
   const still = alert.status === 'still_missing';
+  const tone = levelColor(alert.escalation_level);
   return (
-    <View style={[styles.chip, resolved ? styles.chipLight : still ? styles.chipDark : styles.chipSolid]}>
-      <Text style={[styles.chipText, { color: resolved ? colors.blue : colors.white }]}>
-        {resolved ? 'Resolved' : still ? 'Still missing' : 'Active'}
+    <View style={[styles.chip, resolved ? styles.chipLight : { backgroundColor: tone.bg }]}>
+      <Text style={[styles.chipText, { color: resolved ? colors.blue : tone.fg }]}>
+        {resolved ? 'Resolved' : `${still ? 'Still missing' : 'Active'} · L${alert.escalation_level}`}
       </Text>
     </View>
   );
@@ -183,11 +186,11 @@ function Timeline({ alert, reach }) {
         return (
           <View key={l.level} style={styles.step}>
             <View style={styles.stepTrack}>
-              {i > 0 ? <View style={[styles.stepLine, done && styles.stepLineOn]} /> : <View style={styles.stepLineBlank} />}
+              {i > 0 ? <View style={[styles.stepLine, done && { backgroundColor: levelColor(l.level).bg }]} /> : <View style={styles.stepLineBlank} />}
               <View style={[styles.stepDot, done ? { backgroundColor: levelColor(l.level).bg } : styles.stepDotOff]}>
                 <Text style={[styles.stepDotText, done && { color: levelColor(l.level).fg }]}>L{l.level}</Text>
               </View>
-              {i < reach.levels.length - 1 ? <View style={[styles.stepLine, reach.levels[i + 1].status === 'sent' && styles.stepLineOn]} /> : <View style={styles.stepLineBlank} />}
+              {i < reach.levels.length - 1 ? <View style={[styles.stepLine, reach.levels[i + 1].status === 'sent' && { backgroundColor: levelColor(reach.levels[i + 1].level).bg }]} /> : <View style={styles.stepLineBlank} />}
             </View>
             <Text style={styles.stepLabel} numberOfLines={2}>{labels[l.level]}</Text>
             <Text style={styles.stepTime}>{time ? clock(time) : '—'}</Text>
@@ -292,7 +295,14 @@ function ResolvedView({ alert, reach, onBack }) {
       <View style={styles.card}>
         <Detail label="Reported missing" value={dateTime(alert.created_at)} />
         <Detail label="Found" value={alert.resolved_at ? dateTime(alert.resolved_at) : null} />
-        <Detail label="Highest level" value={`Level ${alert.escalation_level}${alert.escalation_level === 4 ? ' · All users' : ''}`} />
+        <View style={styles.detail}>
+          <Text style={styles.detailLabel}>Highest level</Text>
+          <View style={[styles.chip, styles.levelChip, { backgroundColor: levelColor(alert.escalation_level).bg }]}>
+            <Text style={[styles.chipText, { color: levelColor(alert.escalation_level).fg }]}>
+              Level {alert.escalation_level}{alert.escalation_level === 4 ? ' · All users' : ''}
+            </Text>
+          </View>
+        </View>
         {family ? <Detail label="Sightings received" value={String(alert.sightings_count ?? 0)} /> : null}
         {family && reach ? (
           <Detail label="People notified" value={((reach.family || 0) + reach.levels.reduce((s, l) => s + (l.users || 0), 0)).toLocaleString('en-ZA')} />
@@ -479,6 +489,7 @@ const styles = StyleSheet.create({
   chipSolid: { backgroundColor: colors.blue },
   chipDark: { backgroundColor: colors.blueDark },
   chipLight: { backgroundColor: colors.blueLight },
+  levelChip: { alignSelf: 'flex-start', marginTop: 2 },
   chipText: { fontSize: 11, fontWeight: '700' },
   notified: { fontSize: 13, color: colors.ink2 },
 
