@@ -9,6 +9,7 @@
     "test": "node tests/run-all.js",
     "test:db": "node tests/create-test-db.js",
     "tunnel": "npx localtunnel --port 5000 --subdomain localalert-sdmodise",
+    "share-tunnel": "node scripts/share-tunnel.js",
     "escalation-status": "node scripts/escalation-status.js",
     "create-test-user": "node scripts/createTestUser.js"
   },
@@ -28,5 +29,12 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  },
+  "nodemonConfig": {
+    "watch": [
+      "src",
+      ".env"
+    ],
+    "ext": "js,json,env"
   }
 }

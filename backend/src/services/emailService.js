@@ -12,26 +12,34 @@ password reset codes are printed in the backend window instead (development only
 */
 const nodemailer = require("nodemailer");
 
-let transporter = null;
+const dns = require("dns");
 
 function isConfigured() {
     return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 }
 
-function getTransporter() {
-    if (!transporter) {
-        const port = Number(process.env.SMTP_PORT) || 465;
-        transporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST,
-            port,
-            secure: port === 465, // 465 = TLS from the start; 587 = STARTTLS
-            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-            connectionTimeout: 10000,
-            greetingTimeout: 10000,
-            socketTimeout: 15000,
-        });
+// The mail server's address is looked up the same way as the browser does (the
+// operating system's lookup). Nodemailer's own lookup asks the DNS server directly,
+// which times out on some home networks ("DNS lookup for smtp.gmail.com timed out").
+async function getTransporter() {
+    const host = process.env.SMTP_HOST;
+    const port = Number(process.env.SMTP_PORT) || 465;
+    let address = host;
+    try {
+        address = (await dns.promises.lookup(host, { family: 4 })).address;
+    } catch {
+        // Leave it to nodemailer, which reports the problem if the name really can't be found.
     }
-    return transporter;
+    return nodemailer.createTransport({
+        host: address,
+        port,
+        secure: port === 465, // 465 = TLS from the start; 587 = STARTTLS
+        tls: { servername: host }, // check the certificate against the name, not the address
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+    });
 }
 
 function escapeHtml(text) {
@@ -70,7 +78,7 @@ async function sendInvitationEmail({ to, inviterName, groupName, expiresAt }) {
 </div>`;
 
     try {
-        await getTransporter().sendMail({
+        await (await getTransporter()).sendMail({
             from: process.env.MAIL_FROM || process.env.SMTP_USER,
             to,
             subject: `${inviterName} invited you to ${groupName} on LocalAlert`,
@@ -96,7 +104,7 @@ function layout(bodyHtml) {
 
 async function send({ to, subject, text, html }, what) {
     try {
-        await getTransporter().sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, text, html });
+        await (await getTransporter()).sendMail({ from: process.env.MAIL_FROM || process.env.SMTP_USER, to, subject, text, html });
         return true;
     } catch (error) {
         console.error(`[email] sending the ${what} failed:`, error.message);

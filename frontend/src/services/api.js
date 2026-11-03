@@ -143,7 +143,17 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
     if (status === 401 && token && unauthorizedHandler) {
       unauthorizedHandler();
     }
-    throw new ApiError(data?.message || 'Something went wrong. Please try again.', status);
+    if (data?.message) throw new ApiError(data.message, status);
+    // No message from LocalAlert: usually a backend that is older than the app.
+    if (status === 404) {
+      throw new ApiError(
+        __DEV__
+          ? `The backend has no ${method} ${path}. Restart the backend so it runs the latest code.`
+          : 'This feature is not available yet. Please update LocalAlert.',
+        status
+      );
+    }
+    throw new ApiError(`Something went wrong (error ${status}). Please try again.`, status);
   }
 
   return data;

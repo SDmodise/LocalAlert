@@ -110,15 +110,16 @@ Scan the QR code with Expo Go. The phone and the computer must be on the same Wi
 | backend | `npm test -- --fresh` | Rebuilds the test database from scratch, then runs the tests |
 | backend | `npm run escalation-status` | Shows each open alert's level and when it moves up next |
 | backend | `npm run tunnel` | Makes the API reachable from other networks (localtunnel) |
+| backend | `npm run share-tunnel` | Public address for shared alert links (Cloudflare); updates `.env` itself |
 | frontend | `npm run lan` | Starts the app for phones on the same Wi-Fi |
 | frontend | `npm run remote` | Starts the app through a tunnel, for a phone on another network |
 
 ### Testing on a phone on another network
 
 1. In `backend`: `npm run dev`, and in a second window `npm run tunnel`.
-2. For share links that work for anyone, start a Cloudflare tunnel:
-   `cloudflared tunnel --protocol http2 --url http://localhost:5000`,
-   and put the `https://….trycloudflare.com` address in `PUBLIC_BASE_URL` in `backend/.env`.
+2. For share links that work for anyone, in a third window: `npm run share-tunnel`.
+   It starts a Cloudflare tunnel and saves its address as `PUBLIC_BASE_URL` in `backend/.env`
+   (the address changes every time, and the backend restarts by itself). Keep that window open.
 3. In `frontend`: `npm run remote`, and send the Expo link to the other phone.
 
 ## Tests
