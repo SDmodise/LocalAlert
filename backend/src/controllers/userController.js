@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const { deleteStoredFiles } = require("../middleware/uploadMiddleware");
 const pinService = require("../services/pinService");
 const emailService = require("../services/emailService");
+const PushToken = require("../models/PushToken");
+const pushService = require("../services/pushService");
 
 // Wrong-password protection for actions that ask for the password again
 // (deleting the account, changing a forgotten PIN): 5 tries, then 15 minutes.
@@ -148,4 +150,35 @@ async function changePin(req, res) {
     }
 }
 
-module.exports = { getMe, updateLocation, deleteMe, changePin };
+// PUT /api/users/me/push-token   { token, platform }
+// The app sends this phone's Expo push token after login, so lock-screen notifications reach it.
+async function savePushToken(req, res) {
+    try {
+        const token = req.body?.token;
+        if (!pushService.isValidToken(token)) {
+            return res.status(400).json({ success: false, message: "Invalid push token." });
+        }
+        const platform = ["android", "ios"].includes(req.body?.platform) ? req.body.platform : null;
+        await PushToken.save(req.user.id, token, platform);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Saving push token failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
+// DELETE /api/users/me/push-token   { token }
+// On log out: this phone stops receiving notifications. No login needed, because the
+// session may already have expired; only the phone itself knows its token.
+async function removePushToken(req, res) {
+    try {
+        const token = req.body?.token;
+        if (pushService.isValidToken(token)) await PushToken.remove(token);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Removing push token failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
+module.exports = { getMe, updateLocation, deleteMe, changePin, savePushToken, removePushToken };

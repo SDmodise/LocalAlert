@@ -8,6 +8,7 @@ require("dotenv").config();
 const app = require("./app");
 const pool = require("./config/database");
 const escalation = require("./services/escalationService");
+const push = require("./services/pushService");
 
 const PORT = process.env.PORT || 5000;
 
@@ -19,6 +20,7 @@ async function startServer() {
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);
             escalation.start();
+            push.start().catch((error) => console.error("[push] could not start:", error.message));
         });
     } catch (error) {
         console.error("Database connection failed");

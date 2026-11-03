@@ -90,6 +90,8 @@ async function completeReset(userId, resetId, passwordHash) {
             [userId, passwordHash]
         );
         await client.query("COMMIT");
+        // Signed-out phones stop getting notifications too (they register again when they log in).
+        await pool.query("DELETE FROM push_tokens WHERE user_id = $1;", [userId]).catch(() => {});
         return true;
     } catch (error) {
         await client.query("ROLLBACK");
