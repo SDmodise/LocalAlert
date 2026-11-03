@@ -17,6 +17,15 @@ export async function createAlert(fields, photo = null) {
   return apiRequest('/alerts', { method: 'POST', token: await getToken(), body });
 }
 
+// Family administrator: the number people call when they see the person ("" = SAPS 10111).
+export async function updateAlertContact(alertId, contactNumber, pin) {
+  return apiRequest(`/alerts/${alertId}/contact`, {
+    method: 'PATCH',
+    token: await getToken(),
+    body: { contact_number: contactNumber, pin },
+  });
+}
+
 export async function listAlerts() {
   const data = await apiRequest('/alerts', { token: await getToken() });
   return data.alerts;

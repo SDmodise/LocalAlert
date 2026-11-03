@@ -15,6 +15,7 @@ router.get("/:alertId", requireAuth, alerts.get);
 router.get("/:alertId/photo", requireAuthForImage, alerts.photo);
 router.post("/:alertId/share", requireAuth, share.createShareLink);
 router.post("/:alertId/resolve", requireAuth, requireRole(ADMIN), alerts.resolve);
+router.patch("/:alertId/contact", requireAuth, requireRole(ADMIN), alerts.updateContact);
 router.post("/:alertId/sightings", requireAuth, sightingUpload, alerts.addSighting);
 router.get("/:alertId/sightings", requireAuth, alerts.listSightings);
 router.get("/:alertId/sightings/:reportId/photo", requireAuthForImage, alerts.sightingPhoto);

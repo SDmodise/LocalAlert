@@ -15,6 +15,15 @@ function normaliseEmail(email) {
     return EMAIL_PATTERN.test(value) && value.length <= 100 ? value : null;
 }
 
+// Any South African phone number, landline or mobile (e.g. 012 345 6789, 082 123 4567,
+// +27 82 123 4567). Returns "0821234567", "" for empty, or null if it is not valid.
+function normaliseContactNumber(phone) {
+    const digits = String(phone ?? "").replace(/[\s()-]/g, "");
+    if (!digits) return "";
+    const local = digits.startsWith("+27") ? "0" + digits.slice(3) : digits.startsWith("27") && digits.length === 11 ? "0" + digits.slice(2) : digits;
+    return /^0[1-8][0-9]{8}$/.test(local) ? local : null;
+}
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-module.exports = { EMAIL_PATTERN, normalisePhone, normaliseEmail, UUID_PATTERN };
+module.exports = { EMAIL_PATTERN, normalisePhone, normaliseEmail, normaliseContactNumber, UUID_PATTERN };

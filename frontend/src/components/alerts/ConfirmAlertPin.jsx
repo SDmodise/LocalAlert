@@ -33,6 +33,7 @@ export default function ConfirmAlertPin({ draft, onCancel, onSent }) {
         last_seen_place: draft.location.place,
         last_seen_time: draft.lastSeen.toISOString(),
         clothing_description: draft.clothing,
+        contact_number: draft.contactNumber || '',
         pin,
       }, draft.newPhoto);
       onSent(result);

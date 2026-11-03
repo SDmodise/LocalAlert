@@ -33,6 +33,8 @@ import { lookupMunicipality } from '../../services/municipalities';
 import { currentPlace, findPlace, placeName } from '../../services/location';
 import { ageInYears } from '../../utils/idNumber';
 import { clock, isoDay, lastSeenDate } from '../../utils/dates';
+import { getMyProfile } from '../../services/users';
+import { formatPhone, normaliseContactNumber } from '../../utils/phone';
 
 // ---------------------------------------------------------------- 14 form
 
@@ -82,7 +84,17 @@ function AlertForm({ initial, onBack, onContinue }) {
   const [pickingDate, setPickingDate] = useState(isOtherDate(initial.day));
   const [time, setTime] = useState(initial.time || clock(new Date()));
   const [clothing, setClothing] = useState(initial.clothing || '');
+  // Number people call when they see them: the administrator's own number to start with.
+  const [contactNumber, setContactNumber] = useState(initial.contactNumber ?? null);
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (contactNumber !== null) return;
+    getMyProfile()
+      .then((me) => setContactNumber((current) => (current === null ? formatPhone(me.phone_number || '') : current)))
+      .catch(() => setContactNumber((current) => (current === null ? '' : current)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     getMyFamilyGroup()
@@ -167,6 +179,8 @@ function AlertForm({ initial, onBack, onContinue }) {
     if (!seen) next.time = 'Enter the time as HH:MM, e.g. 11:50.';
     else if (seen.getTime() > Date.now() + 60000) next.time = 'The last seen time cannot be in the future.';
     if (clothing.trim().length < 3) next.clothing = 'Describe what they were wearing.';
+    const contact = normaliseContactNumber(contactNumber);
+    if (contact === null) next.contact = 'Enter a South African number, e.g. 082 123 4567, or leave it empty to show SAPS (10111).';
     setErrors(next);
     if (Object.keys(next).length) return;
     onContinue({
@@ -176,6 +190,7 @@ function AlertForm({ initial, onBack, onContinue }) {
       day,
       time,
       clothing: clothing.trim(),
+      contactNumber: contact,
       lastSeen: seen,
       newPhoto,
     });
@@ -265,6 +280,19 @@ function AlertForm({ initial, onBack, onContinue }) {
             error={errors.clothing}
             multiline
             maxLength={500}
+          />
+
+          <Input
+            label="Number to call if someone sees them"
+            placeholder="e.g. 082 123 4567"
+            value={contactNumber ?? ''}
+            onChangeText={(v) => { setContactNumber(v); setErrors((e) => ({ ...e, contact: '' })); }}
+            error={errors.contact}
+            hint="Everyone who gets the alert, and anyone who opens a shared link, will see this number. Leave it empty to show SAPS (10111)."
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            textContentType="telephoneNumber"
+            maxLength={18}
           />
 
           <View style={styles.infoBox}>

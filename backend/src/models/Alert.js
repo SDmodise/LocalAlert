@@ -78,13 +78,13 @@ async function create(a) {
             `INSERT INTO alerts
                 (created_by, member_id, municipality_id, child_name, age, gender, description,
                  photo_url, clothing_description, latitude, longitude, last_seen_place,
-                 last_seen_time, status, escalation_level, last_escalated_at)
+                 last_seen_time, status, escalation_level, last_escalated_at, contact_number)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-                     ($13::timestamptz AT TIME ZONE current_setting('TimeZone')), 'active', 1, CURRENT_TIMESTAMP)
+                     ($13::timestamptz AT TIME ZONE current_setting('TimeZone')), 'active', 1, CURRENT_TIMESTAMP, $14)
              RETURNING *;`,
             [a.created_by, a.member_id, a.municipality_id, a.child_name, a.age, a.gender, a.description,
              a.photo_url, a.clothing_description, a.latitude, a.longitude, a.last_seen_place,
-             a.last_seen_time.toISOString()]
+             a.last_seen_time.toISOString(), a.contact_number || null]
         );
         const alert = inserted.rows[0];
 
@@ -235,7 +235,7 @@ const tz = (column) => `(${column} AT TIME ZONE current_setting('TimeZone'))`;
 
 const ALERT_COLUMNS = `
     a.alert_id, a.member_id, a.municipality_id, a.child_name, a.age, a.gender, a.description, a.clothing_description,
-    a.last_seen_place, a.latitude, a.longitude,
+    a.last_seen_place, a.latitude, a.longitude, a.contact_number,
     lower(a.status) AS status, a.escalation_level,
     ${tz("a.last_seen_time")} AS last_seen_time,
     ${tz("a.last_escalated_at")} AS last_escalated_at,
@@ -429,11 +429,21 @@ async function getOrCreateShareCode(alertId) {
     throw new Error("Could not create a share code.");
 }
 
+// The number people call when they see the person ("" or null = SAPS).
+async function updateContactNumber(alertId, number) {
+    const result = await pool.query(
+        `UPDATE alerts SET contact_number = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE alert_id = $1 AND lower(status) <> 'resolved';`,
+        [alertId, number || null]
+    );
+    return result.rowCount > 0;
+}
+
 // Public view of a shared alert: only what is safe to show anyone with the link.
 async function findByShareCode(code) {
     const result = await pool.query(
         `SELECT a.alert_id, a.child_name, a.age, a.gender, a.description, a.clothing_description,
-                a.last_seen_place, lower(a.status) AS status, a.escalation_level, a.photo_url,
+                a.last_seen_place, a.contact_number, lower(a.status) AS status, a.escalation_level, a.photo_url,
                 ${tz("a.last_seen_time")} AS last_seen_time,
                 ${tz("a.created_at")} AS created_at,
                 ${tz("a.resolved_at")} AS resolved_at,
@@ -506,6 +516,7 @@ async function catchUpUser(userId) {
 }
 
 module.exports = {
+    updateContactNumber,
     catchUpUser,
     getOrCreateShareCode,
     findByShareCode,

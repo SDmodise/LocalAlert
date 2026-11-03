@@ -71,7 +71,7 @@ export default function AlertSent({ result, onDone }) {
             <Text style={styles.cardMeta} numberOfLines={2}>{alert.clothing_description}</Text>
           </View>
         </View>
-        <ShareAlertButton alert={alert} variant="primary" title="Share on WhatsApp, Facebook, X…" />
+        <ShareAlertButton alert={alert} variant="primary" title="Share alert" />
         <Text style={styles.hint}>Sharing sends a LocalAlert link, so everyone always sees the latest details and photo.</Text>
         <Text style={styles.label}>Who has been told</Text>
         <LevelRow badge={<FamilyTabIcon size={22} active />} title="Linked family" meta={reach.family ? `${people(reach.family)} · immediately` : 'No linked family members yet'} done={reach.family > 0} />

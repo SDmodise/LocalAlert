@@ -6,6 +6,7 @@ const escalation = require("../services/escalationService");
 const { requirePin } = require("../services/pinService");
 const { absolutePath, storedPath, removeUploaded } = require("../middleware/uploadMiddleware");
 const { distanceKm } = require("../utils/distance");
+const { normaliseContactNumber } = require("../utils/validator");
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -38,6 +39,7 @@ function toAlert(row) {
         clothing_description: row.clothing_description,
         last_seen_place: row.last_seen_place,
         last_seen_time: row.last_seen_time,
+        contact_number: row.contact_number || null, // who to call when you see them (null: SAPS 10111)
         latitude: row.latitude === null ? null : Number(row.latitude),
         longitude: row.longitude === null ? null : Number(row.longitude),
         status: row.status,
@@ -63,7 +65,8 @@ function toAlert(row) {
 const pinAccepted = (req, res, pin) => requirePin(req, res, pin);
 
 // POST /api/alerts
-// { member_id, latitude, longitude, last_seen_place?, last_seen_time (ISO), clothing_description, pin }
+// { member_id, latitude, longitude, last_seen_place?, last_seen_time (ISO), clothing_description,
+//   contact_number? (number to call when someone sees them; empty = SAPS), pin }
 // Accepts JSON, or multipart with an optional new "photo" (a recent photo taken
 // when reporting). Without a new photo, the profile's photo is used.
 async function create(req, res) {
@@ -85,6 +88,7 @@ async function createAlert(req, res, newPhoto) {
         const clothing = String(body.clothing_description || "").trim();
         const pin = String(body.pin || "");
         const seenAt = new Date(body.last_seen_time);
+        const contactNumber = normaliseContactNumber(body.contact_number);
 
         if (!UUID.test(memberId)) return fail(res, 400, "Choose who is missing.");
         const profile = await Alert.findProfileForAlert(memberId);
@@ -108,6 +112,7 @@ async function createAlert(req, res, newPhoto) {
         if (clothing.length < 3 || clothing.length > 500) {
             return fail(res, 400, "Describe what they were wearing (3 to 500 characters).");
         }
+        if (contactNumber === null) return fail(res, 400, CONTACT_PROBLEM);
 
         // PIN last, so a wrong PIN is only counted for an otherwise valid alert.
         const user = await pinAccepted(req, res, pin);
@@ -136,6 +141,7 @@ async function createAlert(req, res, newPhoto) {
             longitude,
             last_seen_place: place,
             last_seen_time: seenAt,
+            contact_number: contactNumber,
         });
 
         const row = await Alert.findForUser(created.alert_id, req.user.id);
@@ -229,6 +235,35 @@ async function resolve(req, res) {
         res.status(200).json({ success: true, message: `${updated.child_name} has been marked as found.`, alert: toAlert(updated) });
     } catch (error) {
         serverError(res, "Resolving alert failed", error);
+    }
+}
+
+const CONTACT_PROBLEM = "Enter a valid South African phone number for people to call (e.g. 082 123 4567), or leave it empty to show SAPS (10111).";
+
+// PATCH /api/alerts/:alertId/contact   { contact_number, pin }
+// The family administrator changes the number people call when they see the person.
+async function updateContact(req, res) {
+    try {
+        const row = await loadAllowed(req, res);
+        if (!row) return;
+        if (!row.is_admin && !row.is_creator) {
+            return fail(res, 403, "Only the family administrator can change the number to call.");
+        }
+        if (row.status === "resolved") return fail(res, 409, "This alert has already been resolved.");
+        const number = normaliseContactNumber(req.body?.contact_number);
+        if (number === null) return fail(res, 400, CONTACT_PROBLEM);
+        if (!(await pinAccepted(req, res, req.body?.pin))) return;
+        if (!(await Alert.updateContactNumber(row.alert_id, number))) {
+            return fail(res, 409, "This alert has already been resolved.");
+        }
+        const updated = await Alert.findForUser(row.alert_id, req.user.id);
+        res.status(200).json({
+            success: true,
+            message: number ? "People who see them will now call this number." : "People who see them will now be asked to call SAPS (10111).",
+            alert: toAlert(updated),
+        });
+    } catch (error) {
+        serverError(res, "Changing the number to call failed", error);
     }
 }
 
@@ -334,4 +369,4 @@ async function sightingPhoto(req, res) {
     }
 }
 
-module.exports = { create, list, get, photo, resolve, addSighting, listSightings, sightingPhoto };
+module.exports = { create, list, get, photo, resolve, addSighting, listSightings, sightingPhoto, updateContact };

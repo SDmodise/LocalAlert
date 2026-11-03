@@ -29,6 +29,11 @@ function esc(value) {
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
+// "0821234567" -> "082 123 4567"
+function formatPhone(number) {
+    return String(number).replace(/^(\d{3})(\d{3})(\d{4})$/, "$1 $2 $3");
+}
+
 function sast(date) {
     if (!date) return "";
     return new Date(date).toLocaleString("en-ZA", {
@@ -195,8 +200,11 @@ async function publicPage(req, res) {
         const still = a.status === "still_missing";
         const image = a.photo_url ? `${baseUrl(req)}/a/${encodeURIComponent(req.params.code)}/photo` : null;
         const title = `MISSING: ${a.child_name}${a.age !== null ? `, ${a.age}` : ""}`;
+        // The family's number to call, or SAPS when none was given.
+        const callNumber = a.contact_number || "10111";
+        const callLabel = a.contact_number ? formatPhone(a.contact_number) : "SAPS (10111)";
         const description = `Last seen ${a.last_seen_place ? `near ${a.last_seen_place}` : `in ${a.municipality_name || "South Africa"}`}` +
-            `${a.last_seen_time ? ` on ${sast(a.last_seen_time)}` : ""}. If you see them, call SAPS on 10111. Please share.`;
+            `${a.last_seen_time ? ` on ${sast(a.last_seen_time)}` : ""}. If you see them, call ${a.contact_number ? formatPhone(a.contact_number) : "SAPS on 10111"}. Please share.`;
 
         res.send(page({
             title, description, image, url,
@@ -209,8 +217,9 @@ ${image ? `<img class="photo" src="${esc(image)}" alt="Photo of ${esc(a.child_na
 <div class="row"><div class="label">Last seen</div><div class="value">${esc(where)}${a.last_seen_time ? ` · ${esc(sast(a.last_seen_time))}` : ""}</div>${area ? `<div class="note" style="text-align:left;margin-top:4px">${esc(area)}</div>` : ""}</div>
 ${a.description ? `<div class="row"><div class="label">Description</div><div class="value">${esc(a.description)}</div></div>` : ""}
 ${a.clothing_description ? `<div class="row"><div class="label">Wearing</div><div class="value">${esc(a.clothing_description)}</div></div>` : ""}
-<a class="btn primary" href="tel:10111">I have seen them · Call SAPS (10111)</a>
+<a class="btn primary" href="tel:${esc(callNumber)}">I have seen them · Call ${esc(callLabel)}</a>
 <a class="btn outline" href="${esc(openInApp)}">Open in the LocalAlert app</a>
+${a.contact_number ? `<p class="note" style="margin:0">In an emergency, call SAPS on <a href="tel:10111">10111</a>.</p>` : ""}
 </div></div>
 <p class="note">These details come straight from LocalAlert and update automatically.<br>Reported ${esc(sast(a.created_at))} · checked ${esc(sast(new Date()))}</p>`,
         }));

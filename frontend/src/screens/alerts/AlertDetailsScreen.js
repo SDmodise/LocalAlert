@@ -1,7 +1,8 @@
 /*
 Alert details.
   06 Community   — anyone who received the alert: description, search area,
-                   "I saw this person" (08) and Call SAPS.
+                   "I saw this person" (08) and Call: the family's number to call
+                   (or SAPS 10111 when none was given).
   07 Family      — family administrator and linked members: escalation timeline,
                    people notified, Spotted reports; the administrator can
                    "Mark as found" with their PIN.
@@ -32,6 +33,8 @@ import { CheckIcon, ClockIcon, InfoIcon, PersonSilhouette, PinIcon } from '../..
 import { alertPhotoUrl, getAlert, listSightings, resolveAlert, sightingPhotoUrl } from '../../services/alerts';
 import SpottedReportScreen from './SpottedReportScreen';
 import ShareAlertButton from '../../components/alerts/ShareAlertButton';
+import ContactNumberCard from '../../components/alerts/ContactNumberCard';
+import { formatPhone } from '../../utils/phone';
 
 const pad = (n) => String(n).padStart(2, '0');
 const clock = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
@@ -79,6 +82,7 @@ function coverage(a) {
 
 const openMaps = (lat, lng) => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
 const callSaps = () => Linking.openURL('tel:10111');
+const callNumber = (number) => Linking.openURL(`tel:${number}`);
 
 function Detail({ label, value }) {
   if (!value) return null;
@@ -148,8 +152,21 @@ function CommunityView({ alert, onSighting, refresh }) {
           ) : null}
         </View>
         <Button title="I saw this person" onPress={onSighting} />
+        {alert.contact_number ? (
+          <>
+            <Button
+              title={`I have seen them · Call ${formatPhone(alert.contact_number)}`}
+              variant="outline"
+              onPress={() => callNumber(alert.contact_number)}
+            />
+            <Pressable onPress={callSaps} hitSlop={8} accessibilityRole="button" style={styles.emergency}>
+              <Text style={styles.small}>In an emergency, call SAPS on <Text style={styles.link}>10111</Text></Text>
+            </Pressable>
+          </>
+        ) : (
+          <Button title="I have seen them · Call SAPS (10111)" variant="outline" onPress={callSaps} />
+        )}
         <ShareAlertButton alert={alert} />
-        <Button title="Call SAPS (10111)" variant="outline" onPress={callSaps} />
       </View>
     </ScrollView>
   );
@@ -205,7 +222,7 @@ function SightingCard({ alert, s }) {
   );
 }
 
-function FamilyView({ alert, reach, sightings, sightingsError, onResolve, onSighting, refresh }) {
+function FamilyView({ alert, reach, sightings, sightingsError, onResolve, onSighting, onAlertChanged, refresh }) {
   const notified = (reach?.family || 0) + (reach?.levels || []).reduce((sum, l) => sum + (l.users || 0), 0);
   return (
     <ScrollView contentContainerStyle={[styles.scroll, styles.body]} refreshControl={refresh}>
@@ -223,7 +240,8 @@ function FamilyView({ alert, reach, sightings, sightingsError, onResolve, onSigh
           {alert.age !== null ? `${alert.age} years · ` : ''}{personWord(alert)} · last seen {alert.last_seen_place || alert.municipality_name}, {dayAndTime(alert.last_seen_time)}
         </Text>
       </View>
-      <ShareAlertButton alert={alert} variant="primary" title="Share alert on WhatsApp, Facebook, X…" />
+      <ShareAlertButton alert={alert} variant="primary" title="Share alert" />
+      <ContactNumberCard alert={alert} canEdit={alert.can_resolve} onChanged={onAlertChanged} />
 
       {reach ? (
         <View style={styles.card}>
@@ -407,6 +425,7 @@ export default function AlertDetailsScreen({ alertId, onBack }) {
           sightingsError={sightingsError}
           onResolve={() => setView('resolve')}
           onSighting={() => setView('sighting')}
+          onAlertChanged={(updated) => setData((d) => ({ ...d, alert: updated }))}
           refresh={refresh}
         />
       )}
@@ -426,6 +445,7 @@ const styles = StyleSheet.create({
   small: { fontSize: 12, lineHeight: 18, color: colors.ink3 },
   bold: { fontWeight: '800', color: colors.ink },
   link: { fontSize: 13, fontWeight: '700', color: colors.blue },
+  emergency: { alignSelf: 'center', marginTop: -4 },
 
   photoHero: { marginHorizontal: 20, marginBottom: 14 },
   bigPhoto: {
