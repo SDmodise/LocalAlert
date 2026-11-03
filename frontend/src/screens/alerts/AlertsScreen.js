@@ -12,7 +12,7 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import AuthImage from '../../components/common/AuthImage';
-import { AlertTabIcon, InfoIcon, PersonSilhouette, PlusIcon } from '../../components/common/Icons';
+import { AlertTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
 import { alertPhotoUrl, listAlerts } from '../../services/alerts';
 import CreateAlertScreen from './CreateAlertScreen';
 import AlertDetailsScreen from './AlertDetailsScreen';
@@ -162,11 +162,6 @@ export default function AlertsScreen({ user, onFullScreen, openAlert, onAlertOpe
       <ScreenHeader
         title="Alerts"
         subtitle={area || 'LocalAlert'}
-        right={isAdmin ? (
-          <Pressable style={styles.roundButton} onPress={() => openCreate(true)} accessibilityRole="button" accessibilityLabel="Report a missing person" hitSlop={6}>
-            <PlusIcon />
-          </Pressable>
-        ) : null}
       />
       {alerts && alerts.length > 0 ? (
         <View style={styles.segments} accessibilityRole="tablist">

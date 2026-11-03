@@ -99,6 +99,16 @@ export function ProfileTabIcon({ size = 24, active }) {
   );
 }
 
+// Warning triangle for new missing-person alerts (red, with a white "!").
+export function WarningIcon({ size = 18, color = colors.danger }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path d="M10.3 3.9L1.9 18.5A2 2 0 003.6 21.5h16.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z" fill={color} />
+      <Path d="M12 9v5M12 17.5v.3" stroke={colors.white} strokeWidth={2.4} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function PlusIcon({ size = 20, color = colors.blue }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

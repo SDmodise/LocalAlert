@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert as NativeAlert, AppState, Linking, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,11 +17,24 @@ import { setUnauthorizedHandler } from './src/services/api';
 import { refreshCurrentMunicipality } from './src/services/users';
 import { followSharedAlert, shareCodeFromUrl } from './src/services/alerts';
 import { getNotifications, getUnreadCount } from './src/services/notifications';
+import { getMyInvitations } from './src/services/invitations';
+import { WarningIcon } from './src/components/common/Icons';
+import {
+  onNotificationReceived,
+  onNotificationTapped,
+  registerForPush,
+  setupNotificationDisplay,
+  unregisterPush,
+} from './src/services/push';
 import { colors } from './src/theme';
 
 const LOCATION_REFRESH_MS = 10 * 60 * 1000; // at most every 10 minutes
 
 const NOTIFICATION_POLL_MS = 30 * 1000; // how often to check for new notifications while the app is open
+
+// Lock-screen notifications (development build only): while the app is open,
+// the in-app banner below is shown instead of a system one.
+setupNotificationDisplay();
 
 // Banner at the top when a new notification arrives while the app is open.
 function NewNotificationBanner({ note, onPress, onClose }) {
@@ -37,6 +50,11 @@ function NewNotificationBanner({ note, onPress, onClose }) {
       }}
       accessibilityRole="alert"
     >
+      {note.notification_type === 'alert' ? (
+        <View style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: colors.white, alignItems: 'center', justifyContent: 'center' }}>
+          <WarningIcon size={22} />
+        </View>
+      ) : null}
       <View style={{ flex: 1 }}>
         <Text style={{ color: colors.white, fontWeight: '800', fontSize: 14 }} numberOfLines={1}>{note.title}</Text>
         <Text style={{ color: colors.heroText, fontSize: 13, marginTop: 2 }} numberOfLines={2}>{note.message}</Text>
@@ -48,13 +66,40 @@ function NewNotificationBanner({ note, onPress, onClose }) {
   );
 }
 
-function MainTabs({ user, onLogout, openAlert, onAlertOpened }) {
+function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsRequest }) {
   const [tab, setTab] = useState('alerts');
   const [fullScreen, setFullScreen] = useState(false); // hides the tab bar (e.g. while reporting a missing person)
   const [unread, setUnread] = useState(0);
   const [banner, setBanner] = useState(null); // newest notification, shown briefly
   const [localOpen, setLocalOpen] = useState(null); // alert opened from a notification
+  const [invites, setInvites] = useState(0); // pending family invitations (badge on Family)
+  const [openInvites, setOpenInvites] = useState(null); // changes to open the invitations screen
   const lastUnread = useRef(null);
+  const lastInvites = useRef(null);
+
+  const refreshInvites = useCallback(async () => {
+    try {
+      const list = await getMyInvitations();
+      if (lastInvites.current !== null && list.length > lastInvites.current) {
+        setBanner({ kind: 'invitation', title: 'Family invitation', message: `${list[0].invited_by} invited you to join ${list[0].group_name}. Tap to view.` });
+      }
+      lastInvites.current = list.length;
+      setInvites(list.length);
+    } catch {
+      // Offline: try again next time.
+    }
+  }, []);
+
+  const openInvitations = () => {
+    setBanner(null);
+    setTab('family');
+    setOpenInvites(Date.now());
+  };
+
+  // A tapped "Family invitation" notification.
+  useEffect(() => {
+    if (openInvitationsRequest) openInvitations();
+  }, [openInvitationsRequest]);
 
   // A shared alert link was opened: show it on the Alerts tab.
   useEffect(() => {
@@ -79,10 +124,12 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened }) {
         // Offline or server unreachable: try again next time.
       }
     };
-    check();
-    const timer = setInterval(check, NOTIFICATION_POLL_MS);
-    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') check(); });
-    return () => { active = false; clearInterval(timer); sub.remove(); };
+    const checkAll = () => { check(); refreshInvites(); };
+    checkAll();
+    const timer = setInterval(checkAll, NOTIFICATION_POLL_MS);
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') checkAll(); });
+    const offPush = onNotificationReceived(checkAll); // a push arrived while open: update at once
+    return () => { active = false; clearInterval(timer); sub.remove(); offPush(); };
   }, []);
 
   // Hide the banner after a few seconds.
@@ -105,9 +152,25 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened }) {
 
   const visible = tab;
   let screen;
-  if (visible === 'family') screen = <FamilyScreen user={user} onFullScreen={setFullScreen} />;
-  else if (visible === 'notifications') {
-    screen = <NotificationsScreen user={user} onOpenAlert={openFromNotification} onUnreadChange={onUnreadChange} />;
+  if (visible === 'family') {
+    screen = (
+      <FamilyScreen
+        user={user}
+        onFullScreen={setFullScreen}
+        invitations={invites}
+        openInvitations={openInvites}
+        onInvitationsChanged={refreshInvites}
+      />
+    );
+  } else if (visible === 'notifications') {
+    screen = (
+      <NotificationsScreen
+        user={user}
+        onOpenAlert={openFromNotification}
+        onUnreadChange={onUnreadChange}
+        onOpenInvitations={openInvitations}
+      />
+    );
   } else if (visible === 'profile') screen = <ProfileScreen sessionUser={user} onLogout={onLogout} />;
   else {
     screen = (
@@ -125,11 +188,11 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened }) {
       <StatusBar style="dark" />
       <View style={{ flex: 1 }}>{screen}</View>
       {fullScreen ? null : (
-        <TabBar role={user.role} active={visible} onChange={setTab} badges={{ notifications: unread }} />
+        <TabBar role={user.role} active={visible} onChange={setTab} badges={{ notifications: unread + invites, family: invites }} />
       )}
       <NewNotificationBanner
         note={banner}
-        onPress={() => banner && openFromNotification(banner.alert_id)}
+        onPress={() => banner && (banner.kind === 'invitation' ? openInvitations() : openFromNotification(banner.alert_id))}
         onClose={() => setBanner(null)}
       />
     </View>
@@ -145,6 +208,7 @@ export default function App() {
   const lastLocationRefresh = useRef(0);
   const [pendingShareCode, setPendingShareCode] = useState(null); // from a shared link
   const [openAlert, setOpenAlert] = useState(null); // { id, key } to show on the Alerts tab
+  const [openInvitationsRequest, setOpenInvitationsRequest] = useState(null); // tapped invitation notification
 
   // Shared alert links (localalert://a/<code>): when the app is opened by one,
   // or while it is already running.
@@ -176,6 +240,7 @@ export default function App() {
   }, [user, pendingShareCode]);
 
   const handleLogout = async () => {
+    await unregisterPush(); // this phone stops getting notifications for the account
     await logout();
     setUser(null);
     setAuthScreen('login');
@@ -185,6 +250,7 @@ export default function App() {
   // backend rejects the session later (expired or invalid token).
   useEffect(() => {
     setUnauthorizedHandler(() => {
+      unregisterPush();
       logout();
       setUser(null);
       setAuthScreen('login');
@@ -194,6 +260,17 @@ export default function App() {
       .catch(() => setUser(null))
       .finally(() => setBooting(false));
   }, []);
+
+  // Lock-screen notifications: ask permission and register this phone once signed in.
+  useEffect(() => {
+    if (user) registerForPush();
+  }, [user]);
+
+  // Tapping a notification (also from the lock screen) opens that alert.
+  useEffect(() => onNotificationTapped((data) => {
+    if (data.type === 'invitation') setOpenInvitationsRequest(Date.now());
+    else setOpenAlert({ id: data.alertId, key: Date.now() });
+  }), []);
 
   // FR36: update the current municipality when the app is opened or brought
   // back to the foreground. Only runs if location permission was already given.
@@ -222,7 +299,15 @@ export default function App() {
       </View>
     );
   } else if (user) {
-    content = <MainTabs user={user} onLogout={handleLogout} openAlert={openAlert} onAlertOpened={() => setOpenAlert(null)} />;
+    content = (
+      <MainTabs
+        user={user}
+        onLogout={handleLogout}
+        openAlert={openAlert}
+        onAlertOpened={() => setOpenAlert(null)}
+        openInvitationsRequest={openInvitationsRequest}
+      />
+    );
   } else if (authScreen === 'signup') {
     content = (
       <SignUpScreen

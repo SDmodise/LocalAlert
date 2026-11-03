@@ -1,6 +1,8 @@
 /*
-17 Notifications — alerts received, escalations, spotted reports and "found safe"
-messages, newest first. Tapping one opens the alert (and marks it read).
+17 Notifications — family invitations first, then alerts received (with a red
+warning triangle), escalations, sightings and "found safe" messages, newest first.
+Tapping an alert notification opens the alert (and marks it read); tapping an
+invitation opens the Family tab's invitations.
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
@@ -11,8 +13,9 @@ import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import AuthImage from '../../components/common/AuthImage';
-import { BellTabIcon, CheckIcon, InfoIcon, PersonSilhouette, PinIcon } from '../../components/common/Icons';
+import { BellTabIcon, CheckIcon, ChevronIcon, FamilyTabIcon, InfoIcon, PersonSilhouette, PinIcon, WarningIcon } from '../../components/common/Icons';
 import { getNotifications, markNotificationsRead } from '../../services/notifications';
+import { getMyInvitations } from '../../services/invitations';
 import { alertPhotoUrl } from '../../services/alerts';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -34,6 +37,9 @@ function timeLabel(date) {
 
 // Small badge in the corner of the photo bubble: what kind of notification it is.
 function TypeBadge({ n }) {
+  if (n.notification_type === 'alert') {
+    return <View style={styles.warnBadge}><WarningIcon size={16} /></View>;
+  }
   if (n.notification_type === 'resolved') {
     return <View style={[styles.typeBadge, { backgroundColor: colors.blue }]}><CheckIcon size={10} /></View>;
   }
@@ -65,7 +71,8 @@ function Row({ n, onPress }) {
       </View>
       <View style={styles.flex}>
         <View style={styles.titleRow}>
-          <Text style={[styles.title, !n.is_read && styles.titleUnread]} numberOfLines={1}>{n.title}</Text>
+          {n.notification_type === 'alert' ? <WarningIcon size={16} /> : null}
+          <Text style={[styles.title, !n.is_read && styles.titleUnread, n.notification_type === 'alert' && styles.titleAlert]} numberOfLines={1}>{n.title}</Text>
           <Text style={styles.time}>{timeLabel(date)}</Text>
         </View>
         <Text style={styles.message} numberOfLines={2}>{n.message}</Text>
@@ -75,16 +82,42 @@ function Row({ n, onPress }) {
   );
 }
 
-export default function NotificationsScreen({ onOpenAlert, onUnreadChange }) {
+// A pending family invitation (they are not stored as notifications).
+function InvitationRow({ inv, onPress }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, styles.rowUnread, styles.rowInvite, pressed && { opacity: 0.85 }]}
+      accessibilityRole="button"
+      accessibilityLabel={`Family invitation to ${inv.group_name} from ${inv.invited_by}. Open to accept or decline`}
+    >
+      <View style={[styles.photo, styles.inviteIcon]}><FamilyTabIcon size={26} active /></View>
+      <View style={styles.flex}>
+        <Text style={[styles.title, styles.titleUnread]} numberOfLines={1}>Family invitation</Text>
+        <Text style={styles.message} numberOfLines={2}>
+          {inv.invited_by} invited you to join {inv.group_name}. Tap to accept or decline.
+        </Text>
+      </View>
+      <ChevronIcon color={colors.blue} />
+    </Pressable>
+  );
+}
+
+export default function NotificationsScreen({ onOpenAlert, onUnreadChange, onOpenInvitations }) {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState(null); // { unread_count, notifications }
+  const [invitations, setInvitations] = useState([]);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const result = await getNotifications();
+      const [result, invites] = await Promise.all([
+        getNotifications(),
+        getMyInvitations().catch(() => []),
+      ]);
       setData(result);
+      setInvitations(invites);
       setError('');
       onUnreadChange?.(result.unread_count);
     } catch (e) {
@@ -119,6 +152,9 @@ export default function NotificationsScreen({ onOpenAlert, onUnreadChange }) {
   };
 
   const sections = [];
+  if (invitations.length) {
+    sections.push({ title: 'FAMILY INVITATIONS', data: invitations.map((inv) => ({ ...inv, kind: 'invitation' })) });
+  }
   for (const n of data?.notifications || []) {
     const title = sectionTitle(new Date(n.created_at));
     if (!sections.length || sections[sections.length - 1].title !== title) sections.push({ title, data: [] });
@@ -144,8 +180,10 @@ export default function NotificationsScreen({ onOpenAlert, onUnreadChange }) {
       ) : (
         <SectionList
           sections={sections}
-          keyExtractor={(n) => n.notification_id}
-          renderItem={({ item }) => <Row n={item} onPress={open} />}
+          keyExtractor={(n) => n.notification_id || `inv-${n.invitation_id}`}
+          renderItem={({ item }) => (item.kind === 'invitation'
+            ? <InvitationRow inv={item} onPress={() => onOpenInvitations?.()} />
+            : <Row n={item} onPress={open} />)}
           renderSectionHeader={({ section }) => <Text style={styles.section}>{section.title}</Text>}
           stickySectionHeadersEnabled={false}
           contentContainerStyle={[styles.content, !sections.length && { flexGrow: 1 }]}
@@ -154,7 +192,7 @@ export default function NotificationsScreen({ onOpenAlert, onUnreadChange }) {
             <EmptyState
               icon={<BellTabIcon size={44} active />}
               title="No notifications yet"
-              message="Alerts, sightings and updates about alerts you received will be listed here."
+              message="Alerts, sightings, family invitations and updates about alerts you received will be listed here."
             />
           }
         />
@@ -181,6 +219,13 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.ink },
   titleUnread: { fontWeight: '800' },
+  titleAlert: { color: colors.danger },
+  warnBadge: {
+    position: 'absolute', right: -4, bottom: -4, width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white,
+  },
+  rowInvite: { borderWidth: 1.5, borderColor: colors.blue },
+  inviteIcon: { justifyContent: 'center', backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.line },
   time: { fontSize: 11, color: colors.ink3 },
   message: { fontSize: 13, lineHeight: 18, color: colors.ink2, marginTop: 2 },
   dot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.blue },

@@ -1,7 +1,8 @@
 /*
 11 Family Link — matches Figma screen "11 Family Link – Group".
 Family Administrators only. Creates the family group and lists its profiles
-and linked family members. "Add profile" opens AddProfileScreen.
+and linked family members. "+ Add profile" opens AddProfileScreen.
+Family invitations (to join someone else's family) are shown at the top.
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -22,12 +23,14 @@ import Input from '../../components/common/Input';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AuthImage from '../../components/common/AuthImage';
-import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette, PlusIcon } from '../../components/common/Icons';
+import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
+import InvitationsCard from '../../components/family/InvitationsCard';
 import { createFamilyGroup, getMyFamilyGroup, profilePhotoUrl, removeLinkedMember } from '../../services/family';
 import { ageInYears } from '../../utils/idNumber';
 import AddProfileScreen from './AddProfileScreen';
 import LinkMemberScreen from './LinkMemberScreen';
 import LinkedFamilyScreen from './LinkedFamilyScreen';
+import JoinFamilyScreen from './JoinFamilyScreen';
 import ProfileDetailsScreen from './ProfileDetailsScreen';
 
 function describe(profile) {
@@ -75,12 +78,14 @@ function initials(m) {
 }
 
 // Administrators manage their family group; everyone else sees the families they are linked to.
-export default function FamilyScreen({ user, onFullScreen }) {
-  if (user?.role !== 'Family Administrator') return <LinkedFamilyScreen onFullScreen={onFullScreen} />;
-  return <AdminFamilyScreen />;
+// invitations: number of pending family invitations; openInvitations changes to open them.
+export default function FamilyScreen({ user, onFullScreen, invitations = 0, openInvitations, onInvitationsChanged }) {
+  const props = { onFullScreen, invitations, openInvitations, onInvitationsChanged };
+  if (user?.role !== 'Family Administrator') return <LinkedFamilyScreen {...props} />;
+  return <AdminFamilyScreen {...props} />;
 }
 
-function AdminFamilyScreen() {
+function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvitationsChanged }) {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState(null); // { group, profiles, members }
   const [loading, setLoading] = useState(true);
@@ -89,6 +94,7 @@ function AdminFamilyScreen() {
   const [adding, setAdding] = useState(false);
   const [linking, setLinking] = useState(false);
   const [viewing, setViewing] = useState(null); // profile opened for details
+  const [joining, setJoining] = useState(false); // invitations / join another family
 
   // Create-group form
   const [groupName, setGroupName] = useState('');
@@ -111,8 +117,24 @@ function AdminFamilyScreen() {
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
+    onInvitationsChanged?.();
     setRefreshing(false);
   };
+
+  const join = (open) => {
+    setJoining(open);
+    onFullScreen?.(open);
+    if (!open) {
+      onInvitationsChanged?.();
+      load();
+    }
+  };
+
+  // Opened from a notification or the Notifications list.
+  useEffect(() => {
+    if (openInvitations) join(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openInvitations]);
 
   const createGroup = async () => {
     const name = groupName.trim();
@@ -154,6 +176,8 @@ function AdminFamilyScreen() {
       ]
     );
   };
+
+  if (joining) return <JoinFamilyScreen onBack={() => join(false)} />;
 
   if (viewing) {
     return (
@@ -222,6 +246,7 @@ function AdminFamilyScreen() {
       <View style={root}>
         <ScreenHeader title="Family Link" />
         <ScrollView contentContainerStyle={styles.createContent} keyboardShouldPersistTaps="handled">
+          <InvitationsCard count={invitations} onOpen={() => join(true)} />
           <View style={styles.illustration}><FamilyTabIcon size={44} active /></View>
           <Text style={styles.heading}>Create your family group</Text>
           <Text style={styles.body}>
@@ -248,19 +273,13 @@ function AdminFamilyScreen() {
 
   return (
     <View style={root}>
-      <ScreenHeader
-        title={group.group_name}
-        subtitle="Family Link"
-        right={
-          <Pressable style={styles.roundButton} onPress={() => setAdding(true)} accessibilityRole="button" accessibilityLabel="Add profile" hitSlop={6}>
-            <PlusIcon />
-          </Pressable>
-        }
-      />
+      <ScreenHeader title={group.group_name} subtitle="Family Link" />
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.blue} colors={[colors.blue]} />}
       >
+        <InvitationsCard count={invitations} onOpen={() => join(true)} />
+
         {error ? (
           <View style={styles.errorBox} accessibilityRole="alert">
             <InfoIcon size={18} />
@@ -325,12 +344,17 @@ function AdminFamilyScreen() {
             </Text>
           </View>
         )}
+
+        <Pressable onPress={() => join(true)} hitSlop={8} accessibilityRole="button" style={styles.joinLink}>
+          <Text style={styles.link}>Join another family group</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  joinLink: { alignSelf: 'center', paddingVertical: 12 },
   root: { flex: 1, backgroundColor: colors.white },
   center: { alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },

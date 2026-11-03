@@ -7,6 +7,7 @@ const Invitation = require("../models/Invitation");
 const Family = require("../models/Family");
 const User = require("../models/User");
 const { sendInvitationEmail } = require("../services/emailService");
+const pushService = require("../services/pushService");
 const { normaliseEmail, normalisePhone, UUID_PATTERN } = require("../utils/validator");
 
 const LIFETIME_MS = 24 * 60 * 60 * 1000;
@@ -77,7 +78,7 @@ async function create(req, res) {
                 return fail(res, 400, "Enter a valid email address or South African mobile number.");
             }
             me = await User.findProfileById(req.user.id);
-            if (inviteEmail === me.email.toLowerCase() || invitePhone === me.phone_number) {
+            if ((inviteEmail && inviteEmail === me.email.toLowerCase()) || (invitePhone && invitePhone === me.phone_number)) {
                 return fail(res, 400, "You cannot invite yourself.");
             }
         } else {
@@ -115,7 +116,16 @@ async function create(req, res) {
                 expiresAt: invitation.expires_at,
             });
         }
-        const inApp = "They will see it in LocalAlert under Profile › Join a family group.";
+        // Someone who already has an account also gets a notification on their phone.
+        Invitation.findInvitedUserIds(inviteEmail, invitePhone, req.user.id)
+            .then((ids) => pushService.sendToUsers(ids, {
+                title: "Family invitation",
+                body: "A family administrator has invited you to their family group. Open LocalAlert to accept.",
+                data: { type: "invitation" },
+            }))
+            .catch((error) => console.error("[push] invitation notice failed:", error.message));
+
+        const inApp = "They will see it in LocalAlert on the Family tab.";
         res.status(201).json({
             success: true,
             emailed,

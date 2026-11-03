@@ -22,7 +22,6 @@ import Button from '../../components/common/Button';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { ChevronIcon, InfoIcon } from '../../components/common/Icons';
 import { getMyProfile, refreshCurrentMunicipality } from '../../services/users';
-import JoinFamilyScreen from '../family/JoinFamilyScreen';
 import DeleteAccountScreen from './DeleteAccountScreen';
 import ChangePinScreen from './ChangePinScreen';
 
@@ -86,7 +85,6 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   const [error, setError] = useState('');
   const [locating, setLocating] = useState(false);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [joining, setJoining] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [changingPin, setChangingPin] = useState(false);
 
@@ -134,10 +132,6 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
       { text: 'Log out', style: 'destructive', onPress: onLogout },
     ]);
   };
-
-  if (joining) {
-    return <JoinFamilyScreen onBack={() => setJoining(false)} />;
-  }
 
   if (changingPin) {
     return <ChangePinScreen onBack={() => setChangingPin(false)} onDone={() => setChangingPin(false)} />;
@@ -208,7 +202,6 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
         )}
 
         <View style={styles.card}>
-          <SettingRow title="Join a family group" onPress={() => setJoining(true)} />
           {isAdmin && <SettingRow title="Change PIN" onPress={() => setChangingPin(true)} />}
           <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} />
           <SettingRow title="Delete account" onPress={() => setDeleting(true)} last />

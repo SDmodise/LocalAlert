@@ -16,6 +16,7 @@ import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette } from '../../comp
 import { getLinkedFamilies, leaveFamily, profilePhotoUrl } from '../../services/family';
 import { ageInYears } from '../../utils/idNumber';
 import JoinFamilyScreen from './JoinFamilyScreen';
+import InvitationsCard from '../../components/family/InvitationsCard';
 
 function describe(p) {
   const age = ageInYears(p.date_of_birth);
@@ -47,7 +48,7 @@ function ProfileCard({ p }) {
   );
 }
 
-export default function LinkedFamilyScreen({ onFullScreen }) {
+export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, openInvitations, onInvitationsChanged }) {
   const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState(null);
   const [error, setError] = useState('');
@@ -68,14 +69,24 @@ export default function LinkedFamilyScreen({ onFullScreen }) {
   const onRefresh = async () => {
     setRefreshing(true);
     await load();
+    onInvitationsChanged?.();
     setRefreshing(false);
   };
 
   const join = (open) => {
     setJoining(open);
     onFullScreen?.(open);
-    if (!open) load();
+    if (!open) {
+      onInvitationsChanged?.();
+      load();
+    }
   };
+
+  // Opened from a notification or the Notifications list.
+  useEffect(() => {
+    if (openInvitations) join(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openInvitations]);
 
   const confirmLeave = (g) => {
     NativeAlert.alert(
@@ -122,6 +133,9 @@ export default function LinkedFamilyScreen({ onFullScreen }) {
     return (
       <View style={root}>
         <ScreenHeader title="Family" />
+        {invitations ? (
+          <View style={styles.invitesTop}><InvitationsCard count={invitations} onOpen={() => join(true)} /></View>
+        ) : null}
         <EmptyState
           icon={<FamilyTabIcon size={44} active />}
           title="Not linked to a family yet"
@@ -140,6 +154,7 @@ export default function LinkedFamilyScreen({ onFullScreen }) {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.blue} colors={[colors.blue]} />}
       >
+        <InvitationsCard count={invitations} onOpen={() => join(true)} />
         {groups.map((g) => (
           <View key={g.group_id} style={styles.group}>
             <View>
@@ -171,6 +186,7 @@ export default function LinkedFamilyScreen({ onFullScreen }) {
 }
 
 const styles = StyleSheet.create({
+  invitesTop: { paddingHorizontal: 20, paddingBottom: 4 },
   root: { flex: 1, backgroundColor: colors.white },
   center: { alignItems: 'center', justifyContent: 'center' },
   flex: { flex: 1 },

@@ -115,7 +115,19 @@ async function accept(invitationId, groupId, userId) {
     }
 }
 
+// Accounts that use this email or phone number (who gets a push for a new invitation).
+async function findInvitedUserIds(email, phone, excludeUserId) {
+    const result = await pool.query(
+        `SELECT user_id FROM users
+         WHERE ((lower(email) = $1) OR ($2::text IS NOT NULL AND phone_number = $2))
+           AND user_id <> $3;`,
+        [email, phone, excludeUserId]
+    );
+    return result.rows.map((r) => r.user_id);
+}
+
 module.exports = {
+    findInvitedUserIds,
     create, revokePendingQr, findByTokenHash, findById, listForUser,
     markExpired, decline, isLinked, accept,
 };
