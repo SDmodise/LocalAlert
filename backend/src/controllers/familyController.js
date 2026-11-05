@@ -1,4 +1,5 @@
 const Family = require("../models/Family");
+const Invitation = require("../models/Invitation");
 const { requirePin } = require("../services/pinService");
 const { validateIdNumber } = require("../services/idValidator");
 const fs = require("fs");
@@ -42,15 +43,26 @@ async function getMyGroup(req, res) {
         const group = await Family.findGroupByAdmin(req.user.id);
         if (!group) return res.status(200).json({ success: true, group: null, profiles: [], members: [] });
 
-        const [profiles, members] = await Promise.all([
+        const [profiles, members, requests] = await Promise.all([
             Family.listProfiles(group.group_id),
             Family.listLinkedMembers(group.group_id),
+            Invitation.pendingResponsibility(group.group_id),
         ]);
         res.status(200).json({
             success: true,
             group: { group_id: group.group_id, group_name: group.group_name },
             profiles: profiles.map(toProfile),
+            // shared_profile_ids: the profiles each linked member may report (shared responsibility)
             members,
+            // Pending "Hand over responsibility" requests (expire after 24 hours)
+            responsibility_requests: requests.map((r) => ({
+                invitation_id: r.invitation_id,
+                method: r.method,
+                to: r.target_first_name ? `${r.target_first_name} ${r.target_last_name}`.trim()
+                    : r.invite_email || r.invite_phone || "QR code",
+                profile_names: r.profile_names,
+                expires_at: r.expires_at,
+            })),
         });
     } catch (error) {
         serverError(res, "Loading family group failed", error);
@@ -180,6 +192,8 @@ async function getLinkedGroups(req, res) {
                 group_name: g.group_name,
                 administrator: `${g.admin_first_name} ${g.admin_last_name}`.trim(),
                 linked_at: g.linked_at,
+                // profiles the administrator shared with this user (they may report these missing)
+                shared_profile_ids: g.shared_profile_ids,
                 profiles: profiles.map(toProfile),
                 members: members.map((m) => ({ user_id: m.user_id, first_name: m.first_name, last_name: m.last_name })),
             };
@@ -355,4 +369,45 @@ async function removeLinkedMember(req, res) {
     }
 }
 
-module.exports = { updateProfile, removeProfile, removeLinkedMember, getMyGroup, createGroup, addProfile, getPhoto, getIdDocument, getLinkedGroups, removeProfile, removeLinkedMember };
+
+// PUT /api/family-groups/:groupId/responsibility/:userId   { member_ids, pin }   (administrator)
+// Changes which verified profiles a linked member may report. An empty list ends it.
+async function updateSharedProfiles(req, res) {
+    try {
+        const group = await Family.findGroupByAdmin(req.user.id);
+        if (!group || group.group_id !== req.params.groupId) return fail(res, 403, "This is not your family group.");
+        const userId = req.params.userId;
+        if (!UUID.test(userId) || !(await Invitation.isLinked(group.group_id, userId))) {
+            return fail(res, 404, "This person is not linked to your family.");
+        }
+        const chosen = Array.isArray(req.body?.member_ids) ? [...new Set(req.body.member_ids.map(String))] : null;
+        if (!chosen || chosen.some((id) => !UUID.test(id))) return fail(res, 400, "Choose the profiles to share.");
+        const verified = await Family.verifiedProfileIds(group.group_id, chosen);
+        if (verified.length !== chosen.length) return fail(res, 400, "Only verified profiles in your family can be shared.");
+        if (!(await requirePin(req, res, req.body?.pin))) return;
+        await Family.setSharedProfiles(group.group_id, userId, verified);
+        res.status(200).json({
+            success: true,
+            message: verified.length ? "Shared responsibility updated." : "Shared responsibility ended.",
+            shared_profile_ids: verified,
+        });
+    } catch (error) {
+        serverError(res, "Updating shared responsibility failed", error);
+    }
+}
+
+// DELETE /api/family-groups/:groupId/responsibility/me   (someone with shared responsibility steps down)
+async function stepDown(req, res) {
+    try {
+        if (!UUID.test(req.params.groupId)) return fail(res, 404, "Family group not found.");
+        if (!(await Invitation.isLinked(req.params.groupId, req.user.id))) return fail(res, 404, "You are not linked to this family.");
+        await Family.setSharedProfiles(req.params.groupId, req.user.id, []);
+        res.status(200).json({ success: true, message: "You no longer share the responsibility for this family." });
+    } catch (error) {
+        serverError(res, "Stepping down failed", error);
+    }
+}
+
+module.exports = {
+    updateSharedProfiles,
+    stepDown, updateProfile, removeProfile, removeLinkedMember, getMyGroup, createGroup, addProfile, getPhoto, getIdDocument, getLinkedGroups, removeProfile, removeLinkedMember };

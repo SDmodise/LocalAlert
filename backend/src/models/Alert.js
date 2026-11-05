@@ -12,6 +12,7 @@ Each user gets one 'alert' notification per alert (unique index uq_notif_alert_u
 Linked family members also get an 'escalation' notification at each new level.
 */
 const pool = require("../config/database");
+const Family = require("./Family");
 
 // Municipalities covered at a level: the origin, then one ring of neighbours per level.
 // Level 4 returns null, meaning everyone.
@@ -96,7 +97,8 @@ async function create(a) {
 
         // Family first, wherever they are.
         const family = await familyOf(client, alert.alert_id);
-        const linked = family.linked.filter((id) => id !== a.created_by);
+        // (When someone with shared responsibility reports, the administrator is told too.)
+        const linked = [...new Set([family.admin_user_id, ...family.linked])].filter((id) => id && id !== a.created_by);
         if (linked.length) {
             await client.query(
                 `INSERT INTO notifications
@@ -249,8 +251,8 @@ const ALERT_COLUMNS = `
 // How the user is connected to the alert: creator, family (admin or linked) or recipient.
 const ACCESS = `
     (a.created_by = $2) AS is_creator,
-    EXISTS (SELECT 1 FROM family_members fm JOIN family_groups fg ON fg.group_id = fm.group_id
-            WHERE fm.member_id = a.member_id AND fg.admin_user_id = $2) AS is_admin,
+    -- the family administrator, or someone the administrator shared this profile with
+    ${Family.CAN_REPORT_SQL("a.member_id", "$2")} AS is_admin,
     EXISTS (SELECT 1 FROM family_members fm JOIN family_groups fg ON fg.group_id = fm.group_id
             WHERE fm.member_id = a.member_id
               AND (fg.admin_user_id = $2

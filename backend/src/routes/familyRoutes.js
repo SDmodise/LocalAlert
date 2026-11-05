@@ -15,6 +15,10 @@ groups.post("/", requireAuth, requireRole(ADMIN), family.createGroup);
 groups.post("/:groupId/profiles", requireAuth, requireRole(ADMIN), profileUpload, family.addProfile);
 groups.post("/:groupId/invitations", requireAuth, requireRole(ADMIN), invitation.create);
 groups.delete("/:groupId/links/me", requireAuth, family.removeLinkedMember);                            // a linked member leaves
+// Shared responsibility ("Hand over responsibility")
+groups.delete("/:groupId/responsibility/me", requireAuth, family.stepDown);
+groups.put("/:groupId/responsibility/:userId", requireAuth, requireRole(ADMIN), family.updateSharedProfiles);
+groups.delete("/:groupId/responsibility-requests/:invitationId", requireAuth, requireRole(ADMIN), invitation.cancelResponsibility);
 groups.delete("/:groupId/links/:userId", requireAuth, requireRole(ADMIN), family.removeLinkedMember);   // the administrator removes someone
 
 // /api/family-members

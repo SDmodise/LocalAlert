@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const spatialService = require("../services/spatialService");
 const Alert = require("../models/Alert");
+const Family = require("../models/Family");
 const bcrypt = require("bcrypt");
 const { deleteStoredFiles } = require("../middleware/uploadMiddleware");
 const pinService = require("../services/pinService");
@@ -46,6 +47,7 @@ function toProfile(row) {
         current_municipality: row.current_municipality,
         last_location_at: row.last_location_at,
         created_at: row.created_at,
+        has_pin: Boolean(row.has_pin),
     };
 }
 
@@ -56,7 +58,12 @@ async function getMe(req, res) {
         if (!row) {
             return res.status(401).json({ success: false, message: "Your account could not be found. Please log in again." });
         }
-        res.status(200).json({ success: true, user: toProfile(row) });
+        // Families this person may report for (their own, or shared with them).
+        const reporting = await Family.reportingGroups(req.user.id);
+        res.status(200).json({
+            success: true,
+            user: { ...toProfile(row), can_report: reporting.length > 0, reporting_groups: reporting },
+        });
     } catch (error) {
         console.error("Loading profile failed:", error.message);
         res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
@@ -181,4 +188,30 @@ async function removePushToken(req, res) {
     }
 }
 
-module.exports = { getMe, updateLocation, deleteMe, changePin, savePushToken, removePushToken };
+// GET /api/users/me/reportable-profiles
+// Profiles this person may report missing: all of their own family's, and those a
+// family administrator shared with them.
+async function reportableProfiles(req, res) {
+    try {
+        const rows = await Family.reportableProfiles(req.user.id);
+        res.status(200).json({
+            success: true,
+            profiles: rows.map((r) => ({
+                member_id: r.member_id,
+                full_name: r.full_name,
+                date_of_birth: r.date_of_birth,
+                gender: r.gender,
+                has_photo: r.has_photo,
+                verification_status: r.verification_status,
+                group_id: r.group_id,
+                group_name: r.group_name,
+                is_own_family: r.is_own_family,
+            })),
+        });
+    } catch (error) {
+        console.error("Loading reportable profiles failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
+module.exports = { reportableProfiles, getMe, updateLocation, deleteMe, changePin, savePushToken, removePushToken };

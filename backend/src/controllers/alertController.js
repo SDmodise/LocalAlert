@@ -1,6 +1,7 @@
 const Alert = require("../models/Alert");
 const Sighting = require("../models/Sighting");
 const Notification = require("../models/Notification");
+const Family = require("../models/Family");
 const spatialService = require("../services/spatialService");
 const escalation = require("../services/escalationService");
 const { requirePin } = require("../services/pinService");
@@ -93,8 +94,8 @@ async function createAlert(req, res, newPhoto) {
         if (!UUID.test(memberId)) return fail(res, 400, "Choose who is missing.");
         const profile = await Alert.findProfileForAlert(memberId);
         if (!profile) return fail(res, 404, "That profile no longer exists.");
-        if (profile.admin_user_id !== req.user.id) {
-            return fail(res, 403, "You can only report people from your own family group.");
+        if (!(await Family.canReportProfile(memberId, req.user.id))) {
+            return fail(res, 403, "You can only report people from your own family, or profiles a family administrator shared with you.");
         }
         if (profile.verification_status !== "verified") {
             return fail(res, 400, "Only verified profiles can be used in an alert. Add a valid ID number to this profile first.");
@@ -224,7 +225,7 @@ async function resolve(req, res) {
         const row = await loadAllowed(req, res);
         if (!row) return;
         if (!row.is_admin && !row.is_creator) {
-            return fail(res, 403, "Only the family administrator can mark this person as found.");
+            return fail(res, 403, "Only the family administrator, or someone they shared this profile with, can mark this person as found.");
         }
         if (row.status === "resolved") return fail(res, 409, "This alert has already been resolved.");
         if (!(await pinAccepted(req, res, req.body?.pin))) return;
@@ -247,7 +248,7 @@ async function updateContact(req, res) {
         const row = await loadAllowed(req, res);
         if (!row) return;
         if (!row.is_admin && !row.is_creator) {
-            return fail(res, 403, "Only the family administrator can change the number to call.");
+            return fail(res, 403, "Only the family administrator, or someone they shared this profile with, can change the number to call.");
         }
         if (row.status === "resolved") return fail(res, 409, "This alert has already been resolved.");
         const number = normaliseContactNumber(req.body?.contact_number);

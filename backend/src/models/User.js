@@ -82,7 +82,7 @@ async function findProfileById(userId) {
                hm.municipality_name AS home_municipality,
                hm.province AS home_province,
                cm.municipality_name AS current_municipality,
-               u.last_location_at, u.created_at
+               u.last_location_at, u.created_at, (u.pin_hash IS NOT NULL) AS has_pin
         FROM users u
         JOIN roles r ON r.role_id = u.role_id
         LEFT JOIN municipalities hm ON hm.municipality_id = u.municipality_id

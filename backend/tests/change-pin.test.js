@@ -43,7 +43,7 @@ async function call(method, p, token, body) {
   let r = await call('PUT', '/users/me/pin', null, { current_pin: '1234', new_pin: '5678' });
   check('not logged in: 401', r.status === 401, r);
   r = await call('PUT', '/users/me/pin', C.token, { current_pin: '1234', new_pin: '5678' });
-  check('community member: 403', r.status === 403, r);
+  check('someone without a PIN cannot change one', r.status === 400 && /Set a PIN/.test(r.data.message), r);
   r = await call('PUT', '/users/me/pin', A.token, { current_pin: '1234', new_pin: '56a8' });
   check('new PIN must be 4 digits', r.status === 400 && /exactly 4 digits/.test(r.data.message), r);
   r = await call('PUT', '/users/me/pin', A.token, { current_pin: '9999', new_pin: '5678' });

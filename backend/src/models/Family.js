@@ -43,7 +43,10 @@ async function listProfiles(groupId) {
 
 async function listLinkedMembers(groupId) {
     const result = await pool.query(
-        `SELECT u.user_id, u.first_name, u.last_name, fl.linked_at
+        `SELECT u.user_id, u.first_name, u.last_name, fl.linked_at,
+                COALESCE((SELECT array_agg(sr.member_id ORDER BY fm2.created_at)
+                          FROM shared_responsibility sr JOIN family_members fm2 ON fm2.member_id = sr.member_id
+                          WHERE sr.user_id = fl.user_id AND fm2.group_id = fl.group_id), '{}') AS shared_profile_ids
          FROM family_links fl JOIN users u ON u.user_id = fl.user_id
          WHERE fl.group_id = $1 ORDER BY fl.linked_at;`,
         [groupId]
@@ -87,7 +90,10 @@ async function findProfileAccess(memberId, userId) {
 async function listLinkedGroups(userId) {
     const result = await pool.query(
         `SELECT fg.group_id, fg.group_name, u.first_name AS admin_first_name, u.last_name AS admin_last_name,
-                fl.linked_at
+                fl.linked_at,
+                COALESCE((SELECT array_agg(sr.member_id) FROM shared_responsibility sr
+                          JOIN family_members fm2 ON fm2.member_id = sr.member_id
+                          WHERE sr.user_id = fl.user_id AND fm2.group_id = fl.group_id), '{}') AS shared_profile_ids
          FROM family_links fl
          JOIN family_groups fg ON fg.group_id = fl.group_id
          JOIN users u ON u.user_id = fg.admin_user_id
@@ -96,6 +102,92 @@ async function listLinkedGroups(userId) {
         [userId]
     );
     return result.rows;
+}
+
+// ---------------------------------------------------------------- shared responsibility
+
+// SQL: may user ${userParam} report profile ${memberCol}? The family administrator may report
+// every profile; a linked member only the profiles the administrator shared with them.
+const CAN_REPORT_SQL = (memberCol, userParam) => `(
+    EXISTS (SELECT 1 FROM family_members p JOIN family_groups g ON g.group_id = p.group_id
+            WHERE p.member_id = ${memberCol} AND g.admin_user_id = ${userParam})
+    OR EXISTS (SELECT 1 FROM shared_responsibility sr
+               JOIN family_members p ON p.member_id = sr.member_id
+               JOIN family_links l ON l.group_id = p.group_id AND l.user_id = sr.user_id
+               WHERE sr.member_id = ${memberCol} AND sr.user_id = ${userParam})
+)`;
+
+// May this user report this profile (administrator, or shared with them)?
+async function canReportProfile(memberId, userId) {
+    const result = await pool.query(`SELECT ${CAN_REPORT_SQL("$1::uuid", "$2::uuid")} AS ok;`, [memberId, userId]);
+    return result.rows[0].ok;
+}
+
+// Families this user may report for: [{ group_id, group_name, role: 'admin' | 'shared' }].
+async function reportingGroups(userId) {
+    const result = await pool.query(
+        `SELECT group_id, group_name, 'admin' AS role FROM family_groups WHERE admin_user_id = $1
+         UNION
+         SELECT fg.group_id, fg.group_name, 'shared' FROM shared_responsibility sr
+         JOIN family_members fm ON fm.member_id = sr.member_id
+         JOIN family_groups fg ON fg.group_id = fm.group_id
+         JOIN family_links fl ON fl.group_id = fg.group_id AND fl.user_id = sr.user_id
+         WHERE sr.user_id = $1
+         ORDER BY role, group_name;`,
+        [userId]
+    );
+    return result.rows;
+}
+
+// Profiles this user may report missing (for the "Report missing person" form).
+async function reportableProfiles(userId) {
+    const result = await pool.query(
+        `SELECT ${PROFILE_COLUMNS}, fg.group_name, (fg.admin_user_id = $1) AS is_own_family
+         FROM family_members fm
+         JOIN family_groups fg ON fg.group_id = fm.group_id
+         WHERE ${CAN_REPORT_SQL("fm.member_id", "$1")}
+         ORDER BY (fg.admin_user_id = $1) DESC, fg.group_name, fm.created_at;`,
+        [userId]
+    );
+    return result.rows;
+}
+
+// Verified profiles of the group among memberIds (the ones that may be shared).
+async function verifiedProfileIds(groupId, memberIds) {
+    if (!memberIds.length) return [];
+    const result = await pool.query(
+        `SELECT member_id FROM family_members
+         WHERE group_id = $1 AND member_id = ANY($2::uuid[]) AND verification_status = 'verified';`,
+        [groupId, memberIds]
+    );
+    return result.rows.map((r) => r.member_id);
+}
+
+// Sets exactly which of this group's profiles a linked member may report (empty: none).
+async function setSharedProfiles(groupId, userId, memberIds) {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+        await client.query(
+            `DELETE FROM shared_responsibility sr USING family_members fm
+             WHERE sr.member_id = fm.member_id AND fm.group_id = $1 AND sr.user_id = $2
+               AND NOT (sr.member_id = ANY($3::uuid[]));`,
+            [groupId, userId, memberIds]
+        );
+        await client.query(
+            `INSERT INTO shared_responsibility (user_id, member_id)
+             SELECT $2, fm.member_id FROM family_members fm
+             WHERE fm.group_id = $1 AND fm.member_id = ANY($3::uuid[])
+             ON CONFLICT DO NOTHING;`,
+            [groupId, userId, memberIds]
+        );
+        await client.query("COMMIT");
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+    } finally {
+        client.release();
+    }
 }
 
 // Removes a profile. Returns the deleted row's file paths (to delete the files),
@@ -228,6 +320,7 @@ async function updateProfile(memberId, changes) {
 }
 
 module.exports = {
+    CAN_REPORT_SQL, canReportProfile, reportingGroups, reportableProfiles, verifiedProfileIds, setSharedProfiles,
     findProfileForEdit,
     photoUsedByAlert,
     updateProfile,
