@@ -1,5 +1,5 @@
 /*
-Profile > Change PIN (Family Administrators).
+Profile > Change PIN (Family Administrators, and anyone who made a PIN to share responsibility).
 
 1. Current PIN, or "Forgot your PIN?" -> the account password instead.
 2. New 4-digit PIN.

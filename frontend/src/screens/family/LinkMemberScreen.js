@@ -2,6 +2,10 @@
 13 Link a family member — matches Figma screen "13 Link a family member – QR and invite".
 The family administrator shows a single-use QR code (valid 24 hours) or sends an
 in-app invitation to an email address or phone number.
+
+With share = { memberIds, pin, names } it is "Hand over responsibility" to someone new:
+the person who joins can also report the chosen profiles missing. initialQr is the
+code HandOverScreen already made (it checked the PIN), so none is made on opening.
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -23,12 +27,12 @@ function timeLeft(expiresAt, now) {
   return hours > 0 ? `${hours} h ${minutes} min` : `${minutes} min`;
 }
 
-export default function LinkMemberScreen({ groupId, groupName, onBack }) {
+export default function LinkMemberScreen({ groupId, groupName, onBack, share, initialQr }) {
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState('qr');
 
   // QR code
-  const [qr, setQr] = useState(null); // { value, expiresAt }
+  const [qr, setQr] = useState(initialQr || null); // { value, expiresAt }
   const [qrLoading, setQrLoading] = useState(false);
   const [qrError, setQrError] = useState('');
   const [now, setNow] = useState(Date.now());
@@ -54,7 +58,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
     setQrLoading(true);
     setQrError('');
     try {
-      const data = await createQrInvitation(groupId);
+      const data = await createQrInvitation(groupId, share);
       setQr({ value: data.qr_value, expiresAt: data.invitation.expires_at });
       setNow(Date.now());
     } catch (e) {
@@ -62,9 +66,12 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
     } finally {
       setQrLoading(false);
     }
-  }, [groupId]);
+  }, [groupId, share]);
 
-  useEffect(() => { generate(); }, [generate]);
+  useEffect(() => {
+    if (!initialQr) generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const send = async () => {
     setInviteError('');
@@ -75,7 +82,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
     }
     setSending(true);
     try {
-      const result = await sendInvitation(groupId, contact.trim());
+      const result = await sendInvitation(groupId, contact.trim(), share);
       setSentTo(result.message || `Invitation sent to ${contact.trim()}.`);
       setContact('');
     } catch (e) {
@@ -89,7 +96,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <SubHeader title="Link a family member" onBack={onBack} />
+      <SubHeader title={share ? 'Hand over responsibility' : 'Link a family member'} onBack={onBack} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 20 }]} keyboardShouldPersistTaps="handled">
         <View style={styles.segment} accessibilityRole="tablist">
@@ -104,7 +111,7 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
         {tab === 'qr' ? (
           <>
             <Text style={[styles.body, styles.center]}>
-              Ask your family member to open LocalAlert, go to <Text style={styles.bold}>Profile › Join a family group</Text> and scan this code.
+              Ask them to go to the <Text style={styles.bold}>Family</Text> tab in LocalAlert, tap <Text style={styles.bold}>Join a family group</Text> and scan this code.
             </Text>
 
             <View style={styles.qrFrame} accessibilityLabel="Family QR code">
@@ -126,7 +133,9 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
 
             <View style={styles.infoBox}>
               <Text style={styles.body}>
-                Linked family members receive {groupName ? `${groupName}'s` : "this family's"} alerts and sightings immediately, wherever they are. They cannot create or resolve alerts.
+                {share
+                  ? `They will be linked to ${groupName || 'your family'} and can report ${share.names} missing. They confirm with their own PIN when they accept.`
+                  : `Linked family members receive ${groupName ? `${groupName}'s` : "this family's"} alerts and sightings immediately, wherever they are. They cannot create or resolve alerts.`}
               </Text>
             </View>
 
@@ -135,8 +144,13 @@ export default function LinkMemberScreen({ groupId, groupName, onBack }) {
           </>
         ) : (
           <>
+            {share ? (
+              <View style={styles.infoBox}>
+                <Text style={styles.body}>They will be linked to {groupName || 'your family'} and can report {share.names} missing.</Text>
+              </View>
+            ) : null}
             <Text style={styles.body}>
-              Enter the email address or mobile number of the person you want to link. An email address also gets the invitation by email. They accept it in LocalAlert under Profile › Join a family group. If they don't have an account yet, they will see it after signing up with the same email or number.
+              Enter the email address or mobile number of the person you want to link. An email address also gets the invitation by email. They accept it in LocalAlert on the Family tab. If they don't have an account yet, they will see it after signing up with the same email or number.
             </Text>
             <Input
               label="Email or mobile number"

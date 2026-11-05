@@ -27,12 +27,12 @@ import PhotoChoice from '../../components/alerts/PhotoChoice';
 import LastSeenPicker, { isOtherDate } from '../../components/alerts/LastSeenPicker';
 import ConfirmAlertPin from '../../components/alerts/ConfirmAlertPin';
 import AlertSent from '../../components/alerts/AlertSent';
-import { getMyFamilyGroup, profilePhotoUrl } from '../../services/family';
+import { profilePhotoUrl } from '../../services/family';
 import { lookupMunicipality } from '../../services/municipalities';
 import { currentPlace, findPlace, placeName } from '../../services/location';
 import { ageInYears } from '../../utils/idNumber';
 import { clock, isoDay, lastSeenDate } from '../../utils/dates';
-import { getMyProfile } from '../../services/users';
+import { getMyProfile, getReportableProfiles } from '../../services/users';
 import { formatPhone, normaliseContactNumber } from '../../utils/phone';
 
 // ---------------------------------------------------------------- 14 form
@@ -58,6 +58,9 @@ function ProfileOption({ profile, selected, onPress }) {
         <Text style={styles.cardMeta}>
           {age !== null ? `${age} ${age === 1 ? 'year' : 'years'} · ` : ''}{verified ? 'Verified' : 'Pending ID – cannot be used'}
         </Text>
+        {profile.is_own_family === false ? (
+          <Text style={styles.sharedText}>{profile.group_name} · shared with you</Text>
+        ) : null}
       </View>
       <View style={[styles.radio, selected && styles.radioOn]}>{selected ? <CheckIcon size={12} /> : null}</View>
     </Pressable>
@@ -96,9 +99,10 @@ function AlertForm({ initial, onBack, onContinue }) {
   }, []);
 
   useEffect(() => {
-    getMyFamilyGroup()
+    // The administrator's own family, plus profiles other families shared with this person.
+    getReportableProfiles()
       .then((data) => {
-        const list = data.profiles || [];
+        const list = data || [];
         setProfiles(list);
         if (!memberId) {
           const verified = list.filter((p) => p.verification_status === 'verified');
@@ -207,7 +211,9 @@ function AlertForm({ initial, onBack, onContinue }) {
             <View style={styles.infoBox}>
               <FamilyTabIcon size={28} active />
               <Text style={[styles.body, styles.flex]}>
-                You need a verified profile first. Go to the Family tab, add the person with their photo and ID number, then come back here.
+                {profiles.length && profiles.every((p) => p.is_own_family === false)
+                  ? 'None of the profiles shared with you is verified yet. Ask the family administrator to add their ID number.'
+                  : 'You need a verified profile first. Go to the Family tab, add the person with their photo and ID number, then come back here.'}
               </Text>
             </View>
           ) : null}
@@ -342,6 +348,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingHorizontal: 20, paddingBottom: 32, gap: 12 },
   group: { gap: 8 },
+  sharedText: { fontSize: 12, fontWeight: '700', color: colors.blue, marginTop: 2 },
   label: { fontSize: 13, fontWeight: '600', color: colors.ink2, marginTop: 4 },
   hint: { fontSize: 12, color: colors.ink3 },
   body: { fontSize: 13, lineHeight: 20, color: colors.ink2 },

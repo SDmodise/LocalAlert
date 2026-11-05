@@ -202,7 +202,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
         )}
 
         <View style={styles.card}>
-          {isAdmin && <SettingRow title="Change PIN" onPress={() => setChangingPin(true)} />}
+          {(isAdmin || p.has_pin) && <SettingRow title="Change PIN" onPress={() => setChangingPin(true)} />}
           <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} />
           <SettingRow title="Delete account" onPress={() => setDeleting(true)} last />
         </View>

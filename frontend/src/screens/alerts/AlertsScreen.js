@@ -14,6 +14,7 @@ import Button from '../../components/common/Button';
 import AuthImage from '../../components/common/AuthImage';
 import { AlertTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
 import { alertPhotoUrl, listAlerts } from '../../services/alerts';
+import { getMyProfile } from '../../services/users';
 import CreateAlertScreen from './CreateAlertScreen';
 import AlertDetailsScreen from './AlertDetailsScreen';
 
@@ -92,6 +93,8 @@ function AlertCard({ alert, onPress }) {
 export default function AlertsScreen({ user, onFullScreen, openAlert, onAlertOpened }) {
   const insets = useSafeAreaInsets();
   const isAdmin = user?.role === ADMIN;
+  // Administrators, and linked members the administrator shared responsibility with.
+  const [canReport, setCanReport] = useState(isAdmin);
   const [alerts, setAlerts] = useState(null);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -109,6 +112,11 @@ export default function AlertsScreen({ user, onFullScreen, openAlert, onAlertOpe
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (isAdmin) return;
+    getMyProfile().then((me) => setCanReport(Boolean(me?.can_report))).catch(() => {});
+  }, [isAdmin]);
 
   const openCreate = (open) => {
     setCreating(open);
@@ -201,10 +209,10 @@ export default function AlertsScreen({ user, onFullScreen, openAlert, onAlertOpe
           {shown.map((a) => <AlertCard key={a.alert_id} alert={a} onPress={() => openDetails(a.alert_id)} />)}
           {alerts && shown.length === 0 ? (
             <EmptyState icon={<AlertTabIcon size={44} active />} title={emptyText[0]} message={emptyText[1]}>
-              {isAdmin && tab === 'active' ? <Button title="Report a missing person" onPress={() => openCreate(true)} style={styles.wide} /> : null}
+              {canReport && tab === 'active' ? <Button title="Report a missing person" onPress={() => openCreate(true)} style={styles.wide} /> : null}
             </EmptyState>
           ) : null}
-          {isAdmin && tab === 'active' && shown.length > 0 ? (
+          {canReport && tab === 'active' && shown.length > 0 ? (
             <Button title="Report a missing person" variant="secondary" onPress={() => openCreate(true)} />
           ) : null}
           {!alerts && error ? <Button title="Try again" variant="secondary" onPress={onRefresh} /> : null}

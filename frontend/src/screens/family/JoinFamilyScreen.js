@@ -2,6 +2,9 @@
 19 Join a family group — matches Figma screen "19 Join a family group – Scan QR".
 Lists invitations sent to this user and scans a family administrator's QR code.
 Before joining, the user sees which family it is and confirms.
+An invitation or request can also share responsibility ("Hand over responsibility"):
+the user can then report the listed profiles missing. Accepting one needs their PIN,
+or a new PIN if they never had one (AcceptResponsibilitySheet).
 */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -13,16 +16,41 @@ import { colors, radius } from '../../theme';
 import Button from '../../components/common/Button';
 import SubHeader from '../../components/common/SubHeader';
 import { CheckIcon, FamilyTabIcon, InfoIcon } from '../../components/common/Icons';
+import AcceptResponsibilitySheet from '../../components/family/AcceptResponsibilitySheet';
 import {
   QR_PREFIX,
   acceptInvitation,
   acceptQrCode,
   declineInvitation,
-  getMyInvitations,
+  getMyInvitationsInfo,
   previewQrCode,
 } from '../../services/invitations';
 
+const profileNames = (inv) => (inv.profiles || []).map((p) => p.full_name).join(', ');
+
+// The plain "Join" text, or what sharing responsibility means.
 function Confirm({ invitation, busy, error, onAccept, onDecline }) {
+  if (invitation.with_responsibility) {
+    return (
+      <View style={styles.sheetBody}>
+        <View style={styles.sheetRow}>
+          <View style={styles.tile}><FamilyTabIcon size={24} active /></View>
+          <View style={styles.flex}>
+            <Text style={styles.caption}>From {invitation.invited_by}, {invitation.group_name}</Text>
+            <Text style={styles.sheetTitle}>Share the responsibility?</Text>
+          </View>
+        </View>
+        <Text style={styles.body}>
+          You will be linked to {invitation.group_name} and can report {profileNames(invitation)} missing if it is ever needed. You confirm with your PIN.
+        </Text>
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Button title="Accept" onPress={onAccept} loading={busy} />
+        <Pressable onPress={onDecline} disabled={busy} hitSlop={8} accessibilityRole="button">
+          <Text style={[styles.link, styles.center]}>Not now</Text>
+        </Pressable>
+      </View>
+    );
+  }
   return (
     <View style={styles.sheetBody}>
       <View style={styles.sheetRow}>
@@ -53,6 +81,7 @@ function Scanner({ onClose, onJoined }) {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [askPin, setAskPin] = useState(false);
 
   const reset = () => {
     setCode(null);
@@ -82,11 +111,15 @@ function Scanner({ onClose, onJoined }) {
   };
 
   const accept = async () => {
+    if (invitation.with_responsibility) {
+      setAskPin(true);
+      return;
+    }
     setBusy(true);
     setError('');
     try {
       const result = await acceptQrCode(code);
-      onJoined(result.group.group_name);
+      onJoined(result.message);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -149,6 +182,18 @@ function Scanner({ onClose, onJoined }) {
           )}
         </View>
       )}
+
+      <AcceptResponsibilitySheet
+        visible={askPin}
+        invitation={invitation}
+        hasPin={invitation?.hasPin}
+        onCancel={() => setAskPin(false)}
+        onAccept={async (pin) => {
+          const result = await acceptQrCode(code, pin);
+          setAskPin(false);
+          onJoined(result.message);
+        }}
+      />
     </View>
   );
 }
@@ -160,12 +205,16 @@ export default function JoinFamilyScreen({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState(null);
-  const [joined, setJoined] = useState('');
+  const [joined, setJoined] = useState(''); // success message
+  const [hasPin, setHasPin] = useState(false);
+  const [accepting, setAccepting] = useState(null); // invitation that shares responsibility
 
   const load = useCallback(async () => {
     setError('');
     try {
-      setInvitations(await getMyInvitations());
+      const info = await getMyInvitationsInfo();
+      setInvitations(info.invitations);
+      setHasPin(info.hasPin);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -185,12 +234,17 @@ export default function JoinFamilyScreen({ onBack }) {
   }, [scanning, onBack]);
 
   const respond = async (inv, accept) => {
+    if (accept && inv.with_responsibility) {
+      setError('');
+      setAccepting(inv);
+      return;
+    }
     setBusyId(inv.invitation_id);
     setError('');
     try {
       if (accept) {
-        await acceptInvitation(inv.invitation_id);
-        setJoined(inv.group_name);
+        const result = await acceptInvitation(inv.invitation_id);
+        setJoined(result.message);
       } else {
         await declineInvitation(inv.invitation_id);
       }
@@ -206,9 +260,9 @@ export default function JoinFamilyScreen({ onBack }) {
     return (
       <Scanner
         onClose={() => setScanning(false)}
-        onJoined={(groupName) => {
+        onJoined={(message) => {
           setScanning(false);
-          setJoined(groupName);
+          setJoined(message);
           load();
         }}
       />
@@ -223,7 +277,7 @@ export default function JoinFamilyScreen({ onBack }) {
           <View style={styles.successBox} accessibilityRole="alert">
             <View style={styles.successBadge}><CheckIcon size={12} /></View>
             <Text style={[styles.body, styles.flex, { color: colors.ink }]}>
-              You joined {joined}. You will now receive this family's alerts immediately.
+              {joined} {/^You joined/.test(joined) ? "You will now receive this family's alerts immediately." : ''}
             </Text>
           </View>
         ) : null}
@@ -253,6 +307,14 @@ export default function JoinFamilyScreen({ onBack }) {
                   <Text style={styles.caption}>From {inv.invited_by}</Text>
                 </View>
               </View>
+              {inv.with_responsibility ? (
+                <View style={styles.shareBox}>
+                  <Text style={styles.shareTitle}>Shared responsibility</Text>
+                  <Text style={styles.body}>
+                    {inv.invited_by} asks you to share the responsibility for {profileNames(inv)}. You will be able to report them missing if it is ever needed.
+                  </Text>
+                </View>
+              ) : null}
               <View style={styles.actions}>
                 <Button title="Decline" variant="secondary" style={styles.flex}
                   onPress={() => respond(inv, false)} disabled={!!busyId} />
@@ -270,6 +332,19 @@ export default function JoinFamilyScreen({ onBack }) {
           </View>
         ) : null}
       </ScrollView>
+
+      <AcceptResponsibilitySheet
+        visible={!!accepting}
+        invitation={accepting}
+        hasPin={hasPin}
+        onCancel={() => setAccepting(null)}
+        onAccept={async (pin) => {
+          const result = await acceptInvitation(accepting.invitation_id, pin);
+          setAccepting(null);
+          setJoined(result.message);
+          await load();
+        }}
+      />
     </View>
   );
 }
@@ -294,6 +369,8 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10 },
   tile: { width: 46, height: 46, borderRadius: 14, backgroundColor: colors.blueLight, alignItems: 'center', justifyContent: 'center' },
   successBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: colors.blue, backgroundColor: colors.blueTint },
+  shareBox: { gap: 4, padding: 12, borderRadius: 12, backgroundColor: colors.blueTint },
+  shareTitle: { fontSize: 12, fontWeight: '800', color: colors.blue, textTransform: 'uppercase', letterSpacing: 0.5 },
   successBadge: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.blue, alignItems: 'center', justifyContent: 'center' },
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: colors.danger, backgroundColor: colors.dangerTint },
 

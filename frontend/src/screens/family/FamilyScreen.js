@@ -3,6 +3,9 @@
 Family Administrators only. Creates the family group and lists its profiles
 and linked family members. "+ Add profile" opens AddProfileScreen.
 Family invitations (to join someone else's family) are shown at the top.
+"Hand over responsibility" shares the right to report chosen verified profiles
+with a linked member or someone new (HandOverScreen); it can be changed or ended
+per member ("Manage") and pending requests can be cancelled.
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -24,14 +27,17 @@ import Input from '../../components/common/Input';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import EmptyState from '../../components/common/EmptyState';
 import AuthImage from '../../components/common/AuthImage';
-import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
+import { CheckIcon, ClockIcon, FamilyTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
 import InvitationsCard from '../../components/family/InvitationsCard';
-import { createFamilyGroup, getMyFamilyGroup, profilePhotoUrl, removeLinkedMember } from '../../services/family';
+import {
+  cancelResponsibilityRequest, createFamilyGroup, getMyFamilyGroup, profilePhotoUrl, removeLinkedMember,
+} from '../../services/family';
 import { ageInYears } from '../../utils/idNumber';
 import AddProfileScreen from './AddProfileScreen';
 import LinkMemberScreen from './LinkMemberScreen';
 import LinkedFamilyScreen from './LinkedFamilyScreen';
 import JoinFamilyScreen from './JoinFamilyScreen';
+import HandOverScreen from './HandOverScreen';
 import ProfileDetailsScreen from './ProfileDetailsScreen';
 
 function describe(profile) {
@@ -80,8 +86,8 @@ function initials(m) {
 
 // Administrators manage their family group; everyone else sees the families they are linked to.
 // invitations: number of pending family invitations; openInvitations changes to open them.
-export default function FamilyScreen({ user, onFullScreen, invitations = 0, openInvitations, onInvitationsChanged }) {
-  const props = { onFullScreen, invitations, openInvitations, onInvitationsChanged };
+export default function FamilyScreen({ user, onFullScreen, invitations = 0, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
+  const props = { onFullScreen, invitations, openInvitations, onInvitationsChanged, onResponsibilityChanged };
   if (user?.role !== 'Family Administrator') return <LinkedFamilyScreen {...props} />;
   return <AdminFamilyScreen {...props} />;
 }
@@ -96,6 +102,7 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
   const [linking, setLinking] = useState(false);
   const [viewing, setViewing] = useState(null); // profile opened for details
   const [joining, setJoining] = useState(false); // invitations / join another family
+  const [handOver, setHandOver] = useState(null); // { member } (member: manage theirs) or {} for a new hand-over
 
   // Create-group form
   const [groupName, setGroupName] = useState('');
@@ -178,7 +185,46 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
     );
   };
 
+  const confirmCancelRequest = (request) => {
+    NativeAlert.alert(
+      'Cancel this request?',
+      `${request.to === 'QR code' ? 'The QR code' : request.to} will no longer be able to accept it.`,
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Cancel request',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancelResponsibilityRequest(data.group.group_id, request.invitation_id);
+              await load();
+            } catch (e) {
+              NativeAlert.alert('Could not cancel the request', e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (joining) return <JoinFamilyScreen onBack={() => join(false)} />;
+
+  if (handOver && data?.group) {
+    const close = async () => {
+      setHandOver(null);
+      await load();
+    };
+    return (
+      <HandOverScreen
+        group={data.group}
+        profiles={data.profiles}
+        members={data.members}
+        member={handOver.member}
+        onBack={() => setHandOver(null)}
+        onDone={close}
+      />
+    );
+  }
 
   if (viewing) {
     return (
@@ -273,6 +319,8 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
   }
 
   const { group, profiles, members } = data;
+  const requests = data.responsibility_requests || [];
+  const profileName = (id) => profiles.find((p) => p.member_id === id)?.full_name;
 
   return (
     <View style={root}>
@@ -336,7 +384,19 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
                 <View style={styles.memberAvatar}>
                   <Text style={styles.memberInitials}>{initials(m)}</Text>
                 </View>
-                <Text style={[styles.cardTitle, styles.flex]} numberOfLines={1}>{m.first_name} {m.last_name}</Text>
+                <View style={styles.flex}>
+                  <Text style={styles.cardTitle} numberOfLines={1}>{m.first_name} {m.last_name}</Text>
+                  {(m.shared_profile_ids || []).length ? (
+                    <Text style={styles.sharedText} numberOfLines={2}>
+                      Can report {m.shared_profile_ids.map(profileName).filter(Boolean).join(', ')}
+                    </Text>
+                  ) : null}
+                </View>
+                {(m.shared_profile_ids || []).length ? (
+                  <Pressable onPress={() => setHandOver({ member: m })} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Manage what ${m.first_name} can report`}>
+                    <Text style={styles.link}>Manage</Text>
+                  </Pressable>
+                ) : null}
                 <Pressable onPress={() => confirmRemoveMember(m)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Remove ${m.first_name}`}>
                   <Text style={styles.link}>Remove</Text>
                 </Pressable>
@@ -347,6 +407,28 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
             </Text>
           </View>
         )}
+
+        <View style={[styles.sectionRow, { marginTop: 8 }]}>
+          <Text style={styles.sectionTitle}>Shared responsibility</Text>
+        </View>
+        <Text style={styles.caption}>
+          Let someone you trust report chosen family members missing too, for example when you are away. You keep full responsibility.
+        </Text>
+        {requests.map((r) => (
+          <View key={r.invitation_id} style={styles.requestRow}>
+            <ClockIcon />
+            <View style={styles.flex}>
+              <Text style={styles.cardTitle} numberOfLines={1}>Waiting for {r.to}</Text>
+              <Text style={styles.cardMeta} numberOfLines={2}>
+                {(r.profile_names || []).join(', ')} · expires {new Date(r.expires_at).toLocaleString('en-ZA', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+            <Pressable onPress={() => confirmCancelRequest(r)} hitSlop={8} accessibilityRole="button" accessibilityLabel={`Cancel the request for ${r.to}`}>
+              <Text style={styles.link}>Cancel</Text>
+            </Pressable>
+          </View>
+        ))}
+        <Button title="Hand over responsibility" variant="secondary" onPress={() => setHandOver({})} />
 
         <Pressable onPress={() => join(true)} hitSlop={8} accessibilityRole="button" style={styles.joinLink}>
           <Text style={styles.link}>Join another family group</Text>
@@ -407,6 +489,11 @@ const styles = StyleSheet.create({
   memberAvatar: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: colors.blue,
     borderWidth: 2, borderColor: colors.white, alignItems: 'center', justifyContent: 'center',
+  },
+  sharedText: { fontSize: 12, fontWeight: '600', color: colors.blue, marginTop: 2 },
+  requestRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radius.card,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.line, backgroundColor: colors.blueTint,
   },
   memberInitials: { fontSize: 13, fontWeight: '800', color: colors.white },
 

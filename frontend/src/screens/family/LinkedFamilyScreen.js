@@ -2,6 +2,8 @@
 Family tab for community members: the family groups they are linked to, with
 each family's profiles (read-only). Linked members are told immediately when
 anyone in these families is reported missing. Not linked yet? Join from here.
+If the administrator shared responsibility with them, the profiles they can report
+are marked, and they can step down (give the responsibility back).
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert as NativeAlert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -13,7 +15,7 @@ import EmptyState from '../../components/common/EmptyState';
 import Button from '../../components/common/Button';
 import AuthImage from '../../components/common/AuthImage';
 import { CheckIcon, FamilyTabIcon, InfoIcon, PersonSilhouette } from '../../components/common/Icons';
-import { getLinkedFamilies, leaveFamily, profilePhotoUrl } from '../../services/family';
+import { getLinkedFamilies, leaveFamily, profilePhotoUrl, stepDown } from '../../services/family';
 import { ageInYears } from '../../utils/idNumber';
 import JoinFamilyScreen from './JoinFamilyScreen';
 import InvitationsCard from '../../components/family/InvitationsCard';
@@ -25,10 +27,10 @@ function describe(p) {
   return age === null ? word : `${age} ${age === 1 ? 'year' : 'years'} · ${word}`;
 }
 
-function ProfileCard({ p }) {
+function ProfileCard({ p, canReport }) {
   const verified = p.verification_status === 'verified';
   return (
-    <View style={styles.card} accessibilityLabel={`${p.full_name}, ${describe(p)}`}>
+    <View style={[styles.card, canReport && styles.cardShared]} accessibilityLabel={`${p.full_name}, ${describe(p)}${canReport ? ', you can report them missing' : ''}`}>
       <AuthImage
         uri={p.has_photo ? profilePhotoUrl(p.member_id) : null}
         style={styles.avatar}
@@ -37,6 +39,7 @@ function ProfileCard({ p }) {
       <View style={styles.flex}>
         <Text style={styles.cardTitle}>{p.full_name}</Text>
         <Text style={styles.cardMeta}>{describe(p)}</Text>
+        {canReport ? <Text style={styles.sharedText}>You can report</Text> : null}
       </View>
       {verified ? (
         <View style={[styles.chip, styles.chipSolid]}>
@@ -48,7 +51,7 @@ function ProfileCard({ p }) {
   );
 }
 
-export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, openInvitations, onInvitationsChanged }) {
+export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
   const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState(null);
   const [error, setError] = useState('');
@@ -78,6 +81,7 @@ export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, open
     onFullScreen?.(open);
     if (!open) {
       onInvitationsChanged?.();
+      onResponsibilityChanged?.();
       load();
     }
   };
@@ -103,6 +107,29 @@ export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, open
               await load();
             } catch (e) {
               NativeAlert.alert('Could not leave the family group', e.message);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const confirmStepDown = (g) => {
+    NativeAlert.alert(
+      'Step down?',
+      `You will no longer be able to report anyone in ${g.group_name} missing. You stay linked and still get their alerts.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Step down',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await stepDown(g.group_id);
+              await load();
+              onResponsibilityChanged?.();
+            } catch (e) {
+              NativeAlert.alert('Could not step down', e.message);
             }
           },
         },
@@ -163,20 +190,37 @@ export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, open
                 Administrator: {g.administrator} · {g.members.length} linked {g.members.length === 1 ? 'member' : 'members'}
               </Text>
             </View>
+            {(g.shared_profile_ids || []).length ? (
+              <View style={styles.sharedBox}>
+                <Text style={styles.sharedTitle}>Shared responsibility</Text>
+                <Text style={styles.body}>
+                  {g.administrator} shared the responsibility with you: you can report the marked people missing from the Alerts tab.
+                </Text>
+              </View>
+            ) : null}
             {g.profiles.length === 0 ? (
               <Text style={styles.body}>No profiles have been added to this family yet.</Text>
             ) : (
-              g.profiles.map((p) => <ProfileCard key={p.member_id} p={p} />)
+              g.profiles.map((p) => (
+                <ProfileCard key={p.member_id} p={p} canReport={(g.shared_profile_ids || []).includes(p.member_id)} />
+              ))
             )}
-            <Pressable onPress={() => confirmLeave(g)} hitSlop={8} accessibilityRole="button" style={{ alignSelf: 'flex-start' }}>
-              <Text style={styles.link}>Leave this family</Text>
-            </Pressable>
+            <View style={styles.actionsRow}>
+              {(g.shared_profile_ids || []).length ? (
+                <Pressable onPress={() => confirmStepDown(g)} hitSlop={8} accessibilityRole="button">
+                  <Text style={styles.link}>Step down</Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={() => confirmLeave(g)} hitSlop={8} accessibilityRole="button">
+                <Text style={styles.link}>Leave this family</Text>
+              </Pressable>
+            </View>
           </View>
         ))}
         <View style={styles.infoBox}>
           <InfoIcon size={18} color={colors.blue} />
           <Text style={[styles.body, styles.flex]}>
-            You're told immediately if anyone in these families is reported missing, wherever you are. Only the family administrator can add profiles or report someone missing.
+            You're told immediately if anyone in these families is reported missing, wherever you are. Only the family administrator, and people they share the responsibility with, can report someone missing.
           </Text>
         </View>
         <Button title="Join another family group" variant="secondary" onPress={() => join(true)} />
@@ -209,6 +253,11 @@ const styles = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: radius.chip, paddingHorizontal: 9, paddingVertical: 4 },
   chipSolid: { backgroundColor: colors.blue },
   chipText: { fontSize: 11, fontWeight: '700' },
+  cardShared: { borderColor: colors.blue },
+  sharedText: { fontSize: 12, fontWeight: '700', color: colors.blue, marginTop: 2 },
+  sharedBox: { gap: 4, padding: 12, borderRadius: 12, backgroundColor: colors.blueTint },
+  sharedTitle: { fontSize: 12, fontWeight: '800', color: colors.blue, textTransform: 'uppercase', letterSpacing: 0.5 },
+  actionsRow: { flexDirection: 'row', gap: 24 },
   infoBox: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 14, borderRadius: 14,
     borderWidth: 1.5, borderColor: colors.line, backgroundColor: colors.blueTint,
