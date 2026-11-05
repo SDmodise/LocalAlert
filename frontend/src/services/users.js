@@ -45,3 +45,9 @@ export async function changeMyPin({ currentPin, password, newPin }) {
   const body = password ? { password, new_pin: newPin } : { current_pin: currentPin, new_pin: newPin };
   return apiRequest('/users/me/pin', { method: 'PUT', token: await getToken(), body });
 }
+
+// Profiles this person may report missing: their own family's, and those shared with them.
+export async function getReportableProfiles() {
+  const data = await apiRequest('/users/me/reportable-profiles', { token: await getToken() });
+  return data.profiles;
+}

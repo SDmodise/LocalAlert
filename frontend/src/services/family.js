@@ -83,3 +83,24 @@ export async function removeLinkedMember(groupId, userId) {
 export async function leaveFamily(groupId) {
   return apiRequest(`/family-groups/${groupId}/links/me`, { method: 'DELETE', token: await getToken() });
 }
+
+// ---- Shared responsibility ("Hand over responsibility")
+
+// Family administrator: set which verified profiles a linked member may report (empty = end). Needs the PIN.
+export async function updateSharedProfiles(groupId, userId, memberIds, pin) {
+  return apiRequest(`/family-groups/${groupId}/responsibility/${userId}`, {
+    method: 'PUT', token: await getToken(), body: { member_ids: memberIds, pin },
+  });
+}
+
+// Family administrator: cancel a pending hand-over request.
+export async function cancelResponsibilityRequest(groupId, invitationId) {
+  return apiRequest(`/family-groups/${groupId}/responsibility-requests/${invitationId}`, {
+    method: 'DELETE', token: await getToken(),
+  });
+}
+
+// Someone with shared responsibility gives it back.
+export async function stepDown(groupId) {
+  return apiRequest(`/family-groups/${groupId}/responsibility/me`, { method: 'DELETE', token: await getToken() });
+}
