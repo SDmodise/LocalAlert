@@ -43,8 +43,8 @@ async function createUser(userData) {
             last_location_at,
             privacy_consent_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8,
-                CASE WHEN $8::int IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, COALESCE($9::int, $8::int),
+                CASE WHEN COALESCE($9::int, $8::int) IS NULL THEN NULL ELSE CURRENT_TIMESTAMP END,
                 CURRENT_TIMESTAMP)
         RETURNING user_id, first_name, last_name, email, municipality_id;
     `;
@@ -57,7 +57,8 @@ async function createUser(userData) {
         userData.password_hash,
         userData.phone_number,
         userData.pin_hash || null,
-        userData.municipality_id || null
+        userData.municipality_id || null,
+        userData.current_municipality_id || null
     ];
 
     const result = await pool.query(query, values);
@@ -107,6 +108,14 @@ async function updateCurrentMunicipality(userId, municipalityId) {
     `;
 
     await pool.query(query, [userId, municipalityId]);
+}
+
+// Sets the home municipality (chosen from the list, or where the person is when at home).
+async function updateHomeMunicipality(userId, municipalityId) {
+    await pool.query(
+        `UPDATE users SET municipality_id = $2, updated_at = CURRENT_TIMESTAMP WHERE user_id = $1;`,
+        [userId, municipalityId]
+    );
 }
 
 async function findPasswordHash(userId) {
@@ -172,6 +181,7 @@ async function findTokenVersion(userId) {
 }
 
 module.exports = {
+    updateHomeMunicipality,
     findPinHash,
     updatePinHash,
     findTokenVersion,

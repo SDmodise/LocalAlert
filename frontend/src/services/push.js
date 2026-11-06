@@ -14,6 +14,7 @@ Developer account (EAS sets up Apple's push key when building).
 */
 import { Platform } from 'react-native';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import { isRunningInExpoGo } from 'expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { apiRequest } from './api';
@@ -21,8 +22,17 @@ import { getToken } from './auth';
 import { colors } from '../theme';
 
 const TOKEN_KEY = 'localalert.pushToken';
-const inExpoGoOnAndroid =
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient && Platform.OS === 'android';
+// Two checks, because the execution environment is not always reported in Expo Go
+// (it was missed once, and Android then failed setting up the notification channel).
+const inExpoGo = (() => {
+  try {
+    if (isRunningInExpoGo()) return true;
+  } catch {
+    // older expo: fall back to the constant below
+  }
+  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient || Constants.appOwnership === 'expo';
+})();
+const inExpoGoOnAndroid = inExpoGo && Platform.OS === 'android';
 
 // Not loaded in Expo Go on Android, which cannot receive push notifications.
 let Notifications = null;

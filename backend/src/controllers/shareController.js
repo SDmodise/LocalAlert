@@ -115,7 +115,7 @@ async function followShared(req, res) {
 
 // ---- public web page ------------------------------------------------------
 
-const LOGO = `<svg width="30" height="28" viewBox="150 160 724 670" aria-hidden="true"><g stroke="#fff" stroke-width="44" stroke-linecap="round" fill="none"><path d="M769.3 243.1 A318 318 0 0 1 769.3 616.9"/><path d="M254.7 616.9 A318 318 0 0 1 254.7 243.1"/><path d="M842.1 190.2 A408 408 0 0 1 842.1 669.8" opacity=".55"/><path d="M181.9 669.8 A408 408 0 0 1 181.9 190.2" opacity=".55"/></g><path d="M512 820 C436.4 644.5 302 593.8 302 430 A210 210 0 1 1 722 430 C722 593.8 587.6 644.5 512 820 Z" fill="#fff"/><circle cx="512" cy="399.8" r="51.5" fill="#1559D6"/><path d="M409.0 545.4 C409.0 471.4 456.0 467.0 512 467.0 C568.0 467.0 615.0 471.4 615.0 545.4 Z" fill="#1559D6"/></svg>`;
+const LOGO = `<svg width="36" height="28" viewBox="72 150 880 690" aria-hidden="true"><g stroke="#fff" stroke-width="44" stroke-linecap="round" fill="none"><path d="M769.3 243.1 A318 318 0 0 1 769.3 616.9"/><path d="M254.7 616.9 A318 318 0 0 1 254.7 243.1"/><path d="M842.1 190.2 A408 408 0 0 1 842.1 669.8" opacity=".55"/><path d="M181.9 669.8 A408 408 0 0 1 181.9 190.2" opacity=".55"/></g><path d="M512 820 C436.4 644.5 302 593.8 302 430 A210 210 0 1 1 722 430 C722 593.8 587.6 644.5 512 820 Z" fill="#fff"/><circle cx="512" cy="399.8" r="51.5" fill="#1559D6"/><path d="M409.0 545.4 C409.0 471.4 456.0 467.0 512 467.0 C568.0 467.0 615.0 471.4 615.0 545.4 Z" fill="#1559D6"/></svg>`;
 
 function page({ title, description, image, url, body }) {
     return `<!doctype html>

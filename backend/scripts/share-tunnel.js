@@ -4,6 +4,10 @@ npm run share-tunnel
 Starts a Cloudflare quick tunnel to this backend and saves its public address as
 PUBLIC_BASE_URL in backend/.env, so shared alert links open for anyone, anywhere.
 
+It also saves <address>/api as EXPO_PUBLIC_REMOTE_API_URL in frontend/.env, so the app
+opened with "npm run remote" (phones on other networks) reaches the backend through it.
+Restart "npm run remote" after starting this, so the app picks up the new address.
+
 A quick tunnel gets a NEW random address every time it starts, so run this command
 instead of starting cloudflared by hand. With "npm run dev" running, the backend
 restarts by itself when .env changes and picks up the new address.
@@ -34,6 +38,20 @@ function savePublicUrl(url) {
     if (updated !== text) fs.writeFileSync(ENV_FILE, updated);
 }
 
+// The app's backend address for phones on other networks (frontend/.env).
+const APP_ENV_FILE = path.join(__dirname, "..", "..", "frontend", ".env");
+function saveAppUrl(url) {
+    if (!fs.existsSync(APP_ENV_FILE)) return false;
+    const text = fs.readFileSync(APP_ENV_FILE, "utf8");
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    const line = `EXPO_PUBLIC_REMOTE_API_URL=${url}/api`;
+    const updated = /^[ \t]*EXPO_PUBLIC_REMOTE_API_URL=.*$/m.test(text)
+        ? text.replace(/^[ \t]*EXPO_PUBLIC_REMOTE_API_URL=.*$/m, line)
+        : text + (text && !text.endsWith("\n") ? newline : "") + line + newline;
+    if (updated !== text) fs.writeFileSync(APP_ENV_FILE, updated);
+    return true;
+}
+
 console.log(`Starting a Cloudflare tunnel to http://localhost:${port} ...`);
 const tunnel = spawn(command, ["tunnel", "--protocol", "http2", "--url", `http://localhost:${port}`], {
     stdio: ["ignore", "pipe", "pipe"],
@@ -46,12 +64,16 @@ function onOutput(chunk) {
         if (match) {
             found = true;
             savePublicUrl(match[0]);
+            const app = saveAppUrl(match[0]);
             console.log("");
             console.log("  Share links now use:");
             console.log(`  ${match[0]}`);
             console.log("");
             console.log("  Saved as PUBLIC_BASE_URL in backend/.env. If \"npm run dev\" is running, the");
             console.log("  backend restarts by itself; otherwise restart it. Keep this window open.");
+            if (app) {
+                console.log("  Also saved for the app in frontend/.env: (re)start \"npm run remote\" now.");
+            }
             console.log("  (Press Ctrl+C to stop the tunnel.)");
         } else if (/\bERR\b|error/i.test(line) && !/Failed to initialize DNS local resolver/.test(line)) {
             console.log(line.trim());

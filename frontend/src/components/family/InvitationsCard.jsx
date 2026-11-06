@@ -7,15 +7,18 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius } from '../../theme';
 import { ChevronIcon, FamilyTabIcon } from '../common/Icons';
+import { invitationsHeading } from '../../utils/invitationText';
 
-export default function InvitationsCard({ count, onOpen }) {
+// list: the invitations (optional), so requests to share responsibility are named as such.
+export default function InvitationsCard({ count, list, onOpen }) {
   if (!count) return null;
+  const heading = list && list.length === count ? invitationsHeading(list) : invitationsHeading(Array(count).fill({}));
   return (
     <Pressable
       onPress={onOpen}
       style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
-      accessibilityLabel={`${count} family ${count === 1 ? 'invitation' : 'invitations'}. View`}
+      accessibilityLabel={`${heading}. View`}
     >
       <View style={styles.tile}>
         <FamilyTabIcon size={22} active />
@@ -23,7 +26,7 @@ export default function InvitationsCard({ count, onOpen }) {
       </View>
       <View style={styles.flex}>
         <Text style={styles.title}>
-          {count === 1 ? 'You have a family invitation' : `You have ${count} family invitations`}
+          {heading}
         </Text>
         <Text style={styles.meta}>Tap to accept or decline</Text>
       </View>

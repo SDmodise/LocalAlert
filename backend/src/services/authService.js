@@ -107,16 +107,20 @@ async function register(body = {}) {
     const roleRow = await User.getRoleId(role);
     if (!roleRow) throw new Error(`Role "${role}" is missing from the roles table.`);
 
-    // Home municipality: from the phone's location (the coordinates are only used
-    // for the lookup and are not stored), or chosen by hand from the list when the
-    // location could not be found.
-    let municipality = body.latitude != null && body.longitude != null
+    // The phone's location (the coordinates are only used for the lookup and are not
+    // stored) gives the municipality the person is in now. The home municipality is the
+    // one they chose from the list (when they are not at home, or the location could
+    // not be found), otherwise the detected one.
+    const detected = body.latitude != null && body.longitude != null
         ? await spatialService.findMunicipality(body.latitude, body.longitude)
         : null;
-    if (!municipality && body.municipality_id != null && body.municipality_id !== "") {
-        municipality = await spatialService.findMunicipalityById(Number(body.municipality_id));
-        if (!municipality) throw new AuthError("Choose a municipality from the list.", 400);
+    let chosen = null;
+    if (body.municipality_id != null && body.municipality_id !== "") {
+        chosen = await spatialService.findMunicipalityById(Number(body.municipality_id));
+        if (!chosen) throw new AuthError("Choose a municipality from the list.", 400);
     }
+    const municipality = chosen || detected;
+    const current = detected || chosen;
 
     let created;
     try {
@@ -129,6 +133,7 @@ async function register(body = {}) {
             phone_number: phone,
             pin_hash: pinHash,
             municipality_id: municipality ? municipality.municipality_id : null,
+            current_municipality_id: current ? current.municipality_id : null,
         });
     } catch (error) {
         if (error.code === "23505") {
@@ -144,6 +149,7 @@ async function register(body = {}) {
         email: created.email,
         role,
         municipality_name: municipality ? municipality.municipality_name : null,
+        current_municipality_name: current ? current.municipality_name : null,
     };
 
     return { token: issueToken({ user_id: user.user_id, role_name: role }), user };

@@ -93,6 +93,47 @@ async function updateLocation(req, res) {
     }
 }
 
+// PUT /api/users/me/home-municipality
+//   { latitude, longitude }  "I'm home now": home (and current) municipality from the location
+//   { municipality_id }      chosen from the list
+async function updateHomeMunicipality(req, res) {
+    try {
+        const body = req.body || {};
+        let municipality = null;
+        const byLocation = body.latitude != null && body.longitude != null;
+        if (byLocation) {
+            const latitude = Number(body.latitude);
+            const longitude = Number(body.longitude);
+            if (!spatialService.isValidCoordinate(latitude, longitude)) {
+                return res.status(400).json({ success: false, message: "A valid location is required." });
+            }
+            municipality = await spatialService.findMunicipality(latitude, longitude);
+            if (!municipality) {
+                return res.status(400).json({
+                    success: false,
+                    message: "LocalAlert doesn't cover where you are now. Choose your home municipality from the list instead.",
+                });
+            }
+            await User.updateCurrentMunicipality(req.user.id, municipality.municipality_id);
+            await Alert.catchUpUser(req.user.id).catch((e) => console.error("Alert catch-up failed:", e.message));
+        } else {
+            municipality = await spatialService.findMunicipalityById(Number(body.municipality_id));
+            if (!municipality) return res.status(400).json({ success: false, message: "Choose a municipality from the list." });
+        }
+        await User.updateHomeMunicipality(req.user.id, municipality.municipality_id);
+
+        const row = await User.findProfileById(req.user.id);
+        res.status(200).json({
+            success: true,
+            message: `Your home municipality is now ${municipality.municipality_name}.`,
+            user: toProfile(row),
+        });
+    } catch (error) {
+        console.error("Updating home municipality failed:", error.message);
+        res.status(500).json({ success: false, message: "Something went wrong. Please try again." });
+    }
+}
+
 // DELETE /api/users/me   { password }
 // Permanently deletes the account (POPIA: the right to have personal information deleted).
 async function deleteMe(req, res) {
@@ -214,4 +255,5 @@ async function reportableProfiles(req, res) {
     }
 }
 
-module.exports = { reportableProfiles, getMe, updateLocation, deleteMe, changePin, savePushToken, removePushToken };
+module.exports = {
+    updateHomeMunicipality, reportableProfiles, getMe, updateLocation, deleteMe, changePin, savePushToken, removePushToken };

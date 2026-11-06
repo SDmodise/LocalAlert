@@ -51,7 +51,7 @@ function ProfileCard({ p, canReport }) {
   );
 }
 
-export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
+export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, invitationList, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
   const insets = useSafeAreaInsets();
   const [groups, setGroups] = useState(null);
   const [error, setError] = useState('');
@@ -161,7 +161,7 @@ export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, open
       <View style={root}>
         <ScreenHeader title="Family" />
         {invitations ? (
-          <View style={styles.invitesTop}><InvitationsCard count={invitations} onOpen={() => join(true)} /></View>
+          <View style={styles.invitesTop}><InvitationsCard count={invitations} list={invitationList} onOpen={() => join(true)} /></View>
         ) : null}
         <EmptyState
           icon={<FamilyTabIcon size={44} active />}
@@ -181,7 +181,7 @@ export default function LinkedFamilyScreen({ onFullScreen, invitations = 0, open
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.blue} colors={[colors.blue]} />}
       >
-        <InvitationsCard count={invitations} onOpen={() => join(true)} />
+        <InvitationsCard count={invitations} list={invitationList} onOpen={() => join(true)} />
         {groups.map((g) => (
           <View key={g.group_id} style={styles.group}>
             <View>

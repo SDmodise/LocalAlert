@@ -18,6 +18,8 @@ import { refreshCurrentMunicipality } from './src/services/users';
 import { followSharedAlert, shareCodeFromUrl } from './src/services/alerts';
 import { getNotifications, getUnreadCount } from './src/services/notifications';
 import { getMyInvitations } from './src/services/invitations';
+import { describeInvitation } from './src/utils/invitationText';
+import { needsHomeConfirmation } from './src/utils/homeReminder';
 import { WarningIcon } from './src/components/common/Icons';
 import {
   onNotificationReceived,
@@ -73,6 +75,7 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsReq
   const [banner, setBanner] = useState(null); // newest notification, shown briefly
   const [localOpen, setLocalOpen] = useState(null); // alert opened from a notification
   const [invites, setInvites] = useState(0); // pending family invitations (badge on Family)
+  const [inviteList, setInviteList] = useState([]); // the invitations themselves (for their wording)
   const [openInvites, setOpenInvites] = useState(null); // changes to open the invitations screen
   const lastUnread = useRef(null);
   const lastInvites = useRef(null);
@@ -81,10 +84,12 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsReq
     try {
       const list = await getMyInvitations();
       if (lastInvites.current !== null && list.length > lastInvites.current) {
-        setBanner({ kind: 'invitation', title: 'Family invitation', message: `${list[0].invited_by} invited you to join ${list[0].group_name}. Tap to view.` });
+        const { title, message } = describeInvitation(list[0]);
+        setBanner({ kind: 'invitation', title, message: `${message} Tap to view.` });
       }
       lastInvites.current = list.length;
       setInvites(list.length);
+      setInviteList(list);
     } catch {
       // Offline: try again next time.
     }
@@ -100,6 +105,24 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsReq
   useEffect(() => {
     if (openInvitationsRequest) openInvitations();
   }, [openInvitationsRequest]);
+
+  // Signed up away from home: remind them (once each time the app opens) to confirm
+  // their home municipality when they get there.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      needsHomeConfirmation(user?.email).then((needed) => {
+        if (needed) {
+          setBanner((current) => current || {
+            kind: 'home',
+            title: 'Confirm your home municipality',
+            message: 'When you get home, open Profile and tap "I\'m home now". Tap to open Profile.',
+          });
+        }
+      });
+    }, 2500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A shared alert link was opened: show it on the Alerts tab.
   useEffect(() => {
@@ -158,6 +181,7 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsReq
         user={user}
         onFullScreen={setFullScreen}
         invitations={invites}
+        invitationList={inviteList}
         openInvitations={openInvites}
         onInvitationsChanged={refreshInvites}
       />
@@ -192,7 +216,12 @@ function MainTabs({ user, onLogout, openAlert, onAlertOpened, openInvitationsReq
       )}
       <NewNotificationBanner
         note={banner}
-        onPress={() => banner && (banner.kind === 'invitation' ? openInvitations() : openFromNotification(banner.alert_id))}
+        onPress={() => {
+          if (!banner) return;
+          if (banner.kind === 'invitation') openInvitations();
+          else if (banner.kind === 'home') { setBanner(null); setTab('profile'); }
+          else openFromNotification(banner.alert_id);
+        }}
         onClose={() => setBanner(null)}
       />
     </View>

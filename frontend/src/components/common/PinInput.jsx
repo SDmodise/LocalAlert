@@ -1,21 +1,27 @@
 /*
-Four-box PIN entry. A hidden numeric TextInput receives the digits;
-the boxes show a dot for each digit typed.
+Four-box PIN entry. The boxes show a dot for each digit typed.
+
+An invisible numeric TextInput lies on top of the boxes, so tapping them taps the
+input itself and Android always opens the keyboard. (A tiny off-screen input that was
+focused from code did not reliably open the keyboard inside pop-up sheets.)
+autoFocus waits for the sheet to finish sliding in before focusing, for the same reason.
 */
-import React, { useRef } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../../theme';
 
 export default function PinInput({ value, onChange, label, error, autoFocus = false }) {
   const inputRef = useRef(null);
 
+  useEffect(() => {
+    if (!autoFocus) return undefined;
+    const timer = setTimeout(() => inputRef.current?.focus(), 350);
+    return () => clearTimeout(timer);
+  }, [autoFocus]);
+
   return (
-    <Pressable
-      onPress={() => inputRef.current?.focus()}
-      accessibilityRole="none"
-      accessibilityLabel={`${label}, ${value.length} of 4 digits entered`}
-    >
-      <View style={styles.row}>
+    <View accessibilityLabel={`${label}, ${value.length} of 4 digits entered`}>
+      <View style={styles.row} pointerEvents="none">
         {[0, 1, 2, 3].map((i) => (
           <View
             key={i}
@@ -35,13 +41,14 @@ export default function PinInput({ value, onChange, label, error, autoFocus = fa
         onChangeText={(text) => onChange(text.replace(/[^0-9]/g, '').slice(0, 4))}
         keyboardType="number-pad"
         maxLength={4}
-        autoFocus={autoFocus}
         secureTextEntry
         textContentType="oneTimeCode"
-        style={styles.hidden}
+        caretHidden
+        contextMenuHidden
+        style={styles.input}
         accessibilityLabel={label}
       />
-    </Pressable>
+    </View>
   );
 }
 
@@ -60,5 +67,6 @@ const styles = StyleSheet.create({
   boxFilled: { borderColor: colors.blue },
   boxError: { borderColor: colors.danger },
   dot: { fontSize: 26, fontWeight: '700', color: colors.blue },
-  hidden: { position: 'absolute', opacity: 0, width: 1, height: 1 },
+  // Covers the boxes, invisible: taps on the boxes go straight to it.
+  input: { ...StyleSheet.absoluteFillObject, color: 'transparent', backgroundColor: 'transparent', opacity: 0.02, fontSize: 1 },
 });

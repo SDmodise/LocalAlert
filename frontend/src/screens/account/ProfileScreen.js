@@ -2,6 +2,9 @@
 18 Profile — matches Figma screen "18 Profile".
 
 Shows the account, home and current municipality, account actions and Log out.
+Family Administrators also open Reports here.
+Home municipality: "Change" sets it from the location ("I'm home now") or the list.
+Someone who signed up away from home sees a reminder to confirm it when they get home.
 */
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -21,9 +24,12 @@ import { colors, radius } from '../../theme';
 import Button from '../../components/common/Button';
 import ScreenHeader from '../../components/common/ScreenHeader';
 import { ChevronIcon, InfoIcon } from '../../components/common/Icons';
-import { getMyProfile, refreshCurrentMunicipality } from '../../services/users';
+import { getMyProfile, refreshCurrentMunicipality, setHomeMunicipality } from '../../services/users';
+import MunicipalityPicker from '../../components/common/MunicipalityPicker';
+import { needsHomeConfirmation, setHomeConfirmationNeeded } from '../../utils/homeReminder';
 import DeleteAccountScreen from './DeleteAccountScreen';
 import ChangePinScreen from './ChangePinScreen';
+import ReportsScreen from './ReportsScreen';
 
 const ADMIN = 'Family Administrator';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -87,6 +93,11 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [changingPin, setChangingPin] = useState(false);
+  const [reporting, setReporting] = useState(false); // Reports (Family Administrators)
+  const [confirmHome, setConfirmHome] = useState(false); // signed up away from home: remind them
+  const [editingHome, setEditingHome] = useState(false); // choosing the home municipality
+  const [pickingHome, setPickingHome] = useState(false); // ... from the list
+  const [savingHome, setSavingHome] = useState(false);
 
   const load = useCallback(async () => {
     setError('');
@@ -100,6 +111,29 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
   useEffect(() => {
     load().finally(() => setLoading(false));
   }, [load]);
+
+  const email = profile?.email || sessionUser?.email;
+  useEffect(() => {
+    needsHomeConfirmation(email).then(setConfirmHome);
+  }, [email]);
+
+  // useLocation: "I'm home now"; otherwise municipality chosen from the list.
+  const saveHome = async (choice) => {
+    setSavingHome(true);
+    try {
+      const result = await setHomeMunicipality(choice);
+      setProfile(result.user);
+      await setHomeConfirmationNeeded(email, false);
+      setConfirmHome(false);
+      setEditingHome(false);
+      setPickingHome(false);
+      Alert.alert('Home municipality saved', result.message);
+    } catch (e) {
+      Alert.alert('Could not save your home municipality', e.message);
+    } finally {
+      setSavingHome(false);
+    }
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -132,6 +166,10 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
       { text: 'Log out', style: 'destructive', onPress: onLogout },
     ]);
   };
+
+  if (reporting) {
+    return <ReportsScreen onBack={() => setReporting(false)} />;
+  }
 
   if (changingPin) {
     return <ChangePinScreen onBack={() => setChangingPin(false)} onDone={() => setChangingPin(false)} />;
@@ -171,6 +209,41 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
           </View>
         </View>
 
+        {confirmHome && !editingHome ? (
+          <View style={styles.reminderBox}>
+            <Text style={styles.reminderTitle}>Are you at home?</Text>
+            <Text style={styles.body}>
+              You signed up away from home. When you get home, tap "I'm home now" so LocalAlert can confirm your home municipality. Only the municipality is saved.
+            </Text>
+            <Button title="I'm home now" onPress={() => saveHome({ useLocation: true })} loading={savingHome} />
+            <Pressable onPress={() => { setEditingHome(true); setPickingHome(true); }} hitSlop={8} accessibilityRole="button" style={styles.centerSelf}>
+              <Text style={styles.link}>Choose it from the list instead</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {editingHome ? (
+          <View style={styles.reminderBox}>
+            <Text style={styles.reminderTitle}>Home municipality</Text>
+            {pickingHome ? (
+              <MunicipalityPicker
+                selectedId={undefined}
+                onSelect={(m) => saveHome({ municipalityId: m.municipality_id })}
+                onCancel={() => { setPickingHome(false); if (confirmHome) setEditingHome(false); }}
+              />
+            ) : (
+              <>
+                <Text style={styles.body}>Your home municipality is where you live. You get alerts for it, and for wherever you are.</Text>
+                <Button title="I'm home now: use my location" onPress={() => saveHome({ useLocation: true })} loading={savingHome} />
+                <Button title="Choose from the list" variant="secondary" onPress={() => setPickingHome(true)} disabled={savingHome} />
+                <Pressable onPress={() => setEditingHome(false)} hitSlop={8} accessibilityRole="button" style={styles.centerSelf}>
+                  <Text style={styles.link}>Cancel</Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        ) : null}
+
         {loading ? (
           <ActivityIndicator color={colors.blue} style={{ marginVertical: 16 }} />
         ) : error ? (
@@ -181,7 +254,15 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
           </View>
         ) : (
           <View style={styles.infoBox}>
-            <InfoRow label="Home municipality" value={profile.home_municipality || 'Not set'} />
+            <InfoRow
+              label="Home municipality"
+              value={profile.home_municipality || 'Not set'}
+              action={
+                <Pressable onPress={() => { setEditingHome(true); setPickingHome(false); }} hitSlop={8} accessibilityRole="button" accessibilityLabel="Change home municipality">
+                  <Text style={styles.link}>Change</Text>
+                </Pressable>
+              }
+            />
             <View style={styles.divider} />
             <InfoRow
               label="Current municipality"
@@ -202,6 +283,7 @@ export default function ProfileScreen({ sessionUser, onLogout }) {
         )}
 
         <View style={styles.card}>
+          {isAdmin && <SettingRow title="Reports" onPress={() => setReporting(true)} />}
           {(isAdmin || p.has_pin) && <SettingRow title="Change PIN" onPress={() => setChangingPin(true)} />}
           <SettingRow title="Privacy notice" onPress={() => setShowPrivacy(true)} />
           <SettingRow title="Delete account" onPress={() => setDeleting(true)} last />
@@ -259,6 +341,10 @@ const styles = StyleSheet.create({
   muted: { color: colors.ink3 },
   soon: { fontSize: 12, color: colors.ink3 },
   link: { fontSize: 13, fontWeight: '600', color: colors.blue },
+  body: { fontSize: 13, lineHeight: 20, color: colors.ink2 },
+  centerSelf: { alignSelf: 'center', paddingVertical: 4 },
+  reminderBox: { gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, borderColor: colors.blue, backgroundColor: colors.blueTint },
+  reminderTitle: { fontSize: 16, fontWeight: '700', color: colors.ink },
 
   errorBox: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 12, backgroundColor: colors.dangerTint, borderWidth: 1.5, borderColor: colors.danger },
   errorText: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.danger },

@@ -22,8 +22,30 @@ const post=async(p,b)=>{const r=await fetch(B+p,{method:'POST',headers:{'Content
   check('unknown municipality 400', r.status===400 && /Choose a municipality/.test(r.data.message), r.data);
   r=await post('/auth/register',{...base,email:`munitest-c-${tag}@x.co`,municipality_id:'abc'});
   check('junk municipality 400', r.status===400, r.data);
+  // Not at home: home chosen from the list, the detected place is where they are now.
   r=await post('/auth/register',{...base,email:`munitest-d-${tag}@x.co`,latitude:-25.55,longitude:28.1,municipality_id:rm.municipality_id});
-  check('location wins over chosen', r.status===201 && r.data.user.municipality_name==='City of Tshwane', r.data);
+  check('away from home: chosen is home, detected is current', r.status===201 && r.data.user.municipality_name==='Raymond Mhlaba' && r.data.user.current_municipality_name==='City of Tshwane', r.data);
+  const away=r.data.token;
+  row=(await pool.query(`SELECT municipality_id,current_municipality_id FROM users WHERE email=$1`,[`munitest-d-${tag}@x.co`])).rows[0];
+  const tsh=list.find(m=>m.municipality_name==='City of Tshwane');
+  check('saved: home Raymond Mhlaba, current Tshwane', row.municipality_id===rm.municipality_id && row.current_municipality_id===tsh.municipality_id, row);
+  r=await post('/auth/register',{...base,email:`munitest-f-${tag}@x.co`,latitude:-25.55,longitude:28.1});
+  check('at home: detected is home and current', r.status===201 && r.data.user.municipality_name==='City of Tshwane' && r.data.user.current_municipality_name==='City of Tshwane', r.data);
+
+  console.log('Home municipality');
+  const put=async(b,t=away)=>{const x=await fetch(B+'/users/me/home-municipality',{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},body:JSON.stringify(b)});return {status:x.status,data:await x.json()}};
+  r=await put({latitude:-25.55,longitude:28.1},'nope');
+  check('needs login', r.status===401, r.data);
+  r=await put({latitude:-25.55,longitude:28.1});
+  check("I'm home now: home from the location", r.status===200 && r.data.user.home_municipality==='City of Tshwane' && /City of Tshwane/.test(r.data.message), r.data);
+  r=await put({latitude:51.5,longitude:-0.12});
+  check('outside the covered area: 400, home unchanged', r.status===400 && /Choose your home municipality/.test(r.data.message), r.data);
+  r=await put({municipality_id:rm.municipality_id});
+  check('chosen from the list', r.status===200 && r.data.user.home_municipality==='Raymond Mhlaba' && r.data.user.current_municipality==='City of Tshwane', r.data);
+  r=await put({municipality_id:99999});
+  check('unknown municipality 400', r.status===400, r.data);
+  r=await put({latitude:'x',longitude:2});
+  check('bad location 400', r.status===400, r.data);
   r=await post('/auth/register',{...base,email:`munitest-e-${tag}@x.co`});
   check('no location, no choice still works', r.status===201 && r.data.user.municipality_name===null, r.data);
   console.log(`\n${pass} passed, ${fail} failed`); server.close(); await pool.end(); process.exit(fail?1:0);

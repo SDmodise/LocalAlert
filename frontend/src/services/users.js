@@ -51,3 +51,18 @@ export async function getReportableProfiles() {
   const data = await apiRequest('/users/me/reportable-profiles', { token: await getToken() });
   return data.profiles;
 }
+
+// Sets the home municipality: { municipalityId } chosen from the list, or
+// { useLocation: true } for "I'm home now" (where the phone is now becomes home).
+export async function setHomeMunicipality({ municipalityId, useLocation } = {}) {
+  let body = { municipality_id: municipalityId };
+  if (useLocation) {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== 'granted') {
+      throw new Error('Allow LocalAlert to use your location in your phone settings, or choose your municipality from the list.');
+    }
+    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    body = { latitude: position.coords.latitude, longitude: position.coords.longitude };
+  }
+  return apiRequest('/users/me/home-municipality', { method: 'PUT', token: await getToken(), body });
+}

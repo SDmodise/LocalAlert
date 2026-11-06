@@ -35,3 +35,7 @@ docs/
 # (google-services.json still goes to EAS Build through frontend/.easignore.)
 frontend/google-services.json
 *firebase-adminsdk*.json
+
+# Backups made with npm run backup (they hold personal information)
+backups/
+*.dump

@@ -9,6 +9,7 @@ const invitationRoutes = require("./routes/invitationRoutes");
 const alertRoutes = require("./routes/alertRoutes");
 const publicRoutes = require("./routes/publicRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.use("/api/family-members", familyRoutes.members);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/reports", reportRoutes);
 app.use("/a", publicRoutes); // shared alert pages
 
 app.get("/", (req, res) => {

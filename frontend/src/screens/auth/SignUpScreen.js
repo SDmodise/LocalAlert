@@ -4,7 +4,10 @@ and 04 (home municipality).
 
 Step 1  Details and role
 Step 2  Security PIN (Family Administrators only) and privacy consent
-Step 3  Home municipality from the phone's location (optional), then create the account
+Step 3  Home municipality from the phone's location (optional), then create the account.
+        The detected municipality is checked: "Is this your home municipality?" If not,
+        they choose their home from the list and the detected one is kept as where they
+        are now; they are reminded to confirm their home when they get there.
 */
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -29,6 +32,7 @@ import { BackIcon, CheckIcon, InfoIcon, PinIcon } from '../../components/common/
 import { register } from '../../services/auth';
 import { lookupMunicipality } from '../../services/municipalities';
 import MunicipalityPicker from '../../components/common/MunicipalityPicker';
+import { setHomeConfirmationNeeded } from '../../utils/homeReminder';
 
 const ADMIN = 'Family Administrator';
 const COMMUNITY = 'Community Member';
@@ -96,7 +100,10 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
   const [consent, setConsent] = useState(false);
 
   // Step 3
-  const [location, setLocation] = useState({ status: 'idle' }); // idle | locating | found | chosen | not-covered | denied | error
+  // idle | locating | found (detected, not yet confirmed) | home (detected and confirmed as home)
+  // | away (detected is where they are now; home chosen from the list) | chosen (no location; home from the list)
+  // | not-covered | denied | error
+  const [location, setLocation] = useState({ status: 'idle' });
   const [picking, setPicking] = useState(false); // choosing a municipality by hand
   // status: idle | locating | found | not-covered | denied | error
 
@@ -192,13 +199,17 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
         role,
         privacy_consent: consent,
         ...(isAdmin ? { pin } : {}),
-        ...(location.status === 'found'
+        ...(location.status === 'home'
           ? { latitude: location.latitude, longitude: location.longitude }
-          : location.status === 'chosen'
-            ? { municipality_id: location.municipality.municipality_id }
-            : {}),
+          : location.status === 'away'
+            ? { latitude: location.latitude, longitude: location.longitude, municipality_id: location.municipality.municipality_id }
+            : location.status === 'chosen'
+              ? { municipality_id: location.municipality.municipality_id }
+              : {}),
       };
       const user = await register(details);
+      // Not at home now: remind them to confirm their home municipality when they get there.
+      await setHomeConfirmationNeeded(details.email, location.status === 'away');
       onRegistered?.(user);
     } catch (error) {
       if (error.status === 409) {
@@ -324,6 +335,12 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
                 ))}
               </View>
               <FieldError message={errors.role} />
+              <View style={[styles.infoBox, styles.messageRow, { gap: 10 }]}>
+                <InfoIcon size={18} color={colors.blue} />
+                <Text style={[styles.body, styles.flex]}>
+                  We advise one Family Administrator per household. Everyone else in the home can join as a Community Member and be linked to the family, so they still get its alerts straight away. The administrator can also share the responsibility to report someone missing with them.
+                </Text>
+              </View>
 
               <View style={styles.spacer} />
               <Button title="Continue" onPress={submitDetails} />
@@ -391,17 +408,61 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
                 </View>
               )}
 
-              {(location.status === 'found' || location.status === 'chosen') && (
+              {location.status === 'found' && !picking && (
+                <View style={styles.infoBox}>
+                  <Text style={styles.caption}>You are in</Text>
+                  <Text style={styles.foundName}>{location.municipality.municipality_name}</Text>
+                  <Text style={styles.body}>{location.municipality.province}</Text>
+                  <Text style={[styles.question, { marginTop: 10 }]}>Is this your home municipality?</Text>
+                  <Text style={styles.body}>Your home municipality is where you live. You get alerts for it, and for wherever you are.</Text>
+                </View>
+              )}
+
+              {location.status === 'away' && !picking && (
+                <View style={[styles.infoBox, { gap: 10 }]}>
+                  <View style={styles.foundRow}>
+                    <View style={styles.flex}>
+                      <Text style={styles.caption}>Home municipality</Text>
+                      <Text style={styles.foundName}>{location.municipality.municipality_name}</Text>
+                      <Text style={styles.body}>{location.municipality.province}</Text>
+                      <Pressable onPress={() => setPicking(true)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 4 }}>
+                        <Text style={styles.link}>Change</Text>
+                      </Pressable>
+                    </View>
+                    <View style={styles.chip}><Text style={styles.chipText}>Chosen</Text></View>
+                  </View>
+                  <View style={styles.foundRow}>
+                    <View style={styles.flex}>
+                      <Text style={styles.caption}>Where you are now</Text>
+                      <Text style={styles.body}>{location.current.municipality_name}, {location.current.province}</Text>
+                    </View>
+                    <View style={styles.chip}><Text style={styles.chipText}>Current</Text></View>
+                  </View>
+                  <View style={[styles.messageRow, { gap: 10 }]}>
+                    <InfoIcon size={18} color={colors.blue} />
+                    <Text style={[styles.body, styles.flex]}>
+                      When you get home, open Profile and tap "I'm home now" to confirm your home municipality.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {(location.status === 'home' || location.status === 'chosen') && (
                 <View style={[styles.infoBox, styles.foundRow]}>
                   <View style={styles.flex}>
                     <Text style={styles.caption}>Home municipality</Text>
                     <Text style={styles.foundName}>{location.municipality.municipality_name}</Text>
                     <Text style={styles.body}>{location.municipality.province}</Text>
-                    {location.status === 'chosen' && (
-                      <Pressable onPress={() => setPicking(true)} hitSlop={8} accessibilityRole="button" style={{ marginTop: 4 }}>
-                        <Text style={styles.link}>Change</Text>
-                      </Pressable>
-                    )}
+                    <Pressable
+                      onPress={() => (location.status === 'home'
+                        ? setLocation({ ...location, status: 'found' })
+                        : setPicking(true))}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      style={{ marginTop: 4 }}
+                    >
+                      <Text style={styles.link}>Change</Text>
+                    </Pressable>
                   </View>
                   <View style={styles.chip}>
                     <Text style={styles.chipText}>{location.status === 'chosen' ? 'Chosen' : 'Detected'}</Text>
@@ -429,9 +490,21 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
               )}
               {picking && (
                 <MunicipalityPicker
-                  selectedId={location.municipality?.municipality_id}
+                  selectedId={location.status === 'away' || location.status === 'chosen' ? location.municipality?.municipality_id : undefined}
                   onSelect={(municipality) => {
-                    setLocation({ status: 'chosen', municipality });
+                    const detected = location.status === 'found' ? location.municipality
+                      : location.status === 'away' ? location.current : null;
+                    if (detected && municipality.municipality_id === detected.municipality_id) {
+                      // They picked the municipality they are in: that is home after all.
+                      setLocation({ status: 'home', municipality: detected, latitude: location.latitude, longitude: location.longitude });
+                    } else if (detected) {
+                      setLocation({
+                        status: 'away', municipality, current: detected,
+                        latitude: location.latitude, longitude: location.longitude,
+                      });
+                    } else {
+                      setLocation({ status: 'chosen', municipality });
+                    }
                     setPicking(false);
                     setFormError('');
                   }}
@@ -452,7 +525,14 @@ export default function SignUpScreen({ onBackToAuth, onRegistered }) {
 
               <View style={styles.spacer} />
 
-              {location.status === 'found' || location.status === 'chosen' ? (
+              {location.status === 'found' ? (
+                picking ? null : (
+                  <>
+                    <Button title="Yes, this is my home" onPress={() => setLocation({ ...location, status: 'home' })} />
+                    <Button title="No, I'm not at home" variant="secondary" onPress={() => setPicking(true)} />
+                  </>
+                )
+              ) : ['home', 'away', 'chosen'].includes(location.status) ? (
                 <Button title="Create account" onPress={createAccount} loading={submitting} disabled={picking} />
               ) : (
                 <>
@@ -568,6 +648,7 @@ const styles = StyleSheet.create({
   messageRow: { flexDirection: 'row', alignItems: 'flex-start' },
   locationErrorBox: { backgroundColor: colors.dangerTint, borderColor: colors.danger },
   foundName: { fontSize: 16, fontWeight: '700', color: colors.ink },
+  question: { fontSize: 16, fontWeight: '700', color: colors.ink },
   chip: { backgroundColor: colors.blue, borderRadius: radius.chip, paddingHorizontal: 9, paddingVertical: 4 },
   chipText: { fontSize: 11, fontWeight: '700', color: colors.white },
 

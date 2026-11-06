@@ -13,7 +13,9 @@
     "escalation-status": "node scripts/escalation-status.js",
     "check-email": "node scripts/check-email.js",
     "push-status": "node scripts/push-status.js",
-    "create-test-user": "node scripts/createTestUser.js"
+    "create-test-user": "node scripts/createTestUser.js",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js"
   },
   "keywords": [],
   "author": "",

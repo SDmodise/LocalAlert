@@ -16,6 +16,7 @@ import AuthImage from '../../components/common/AuthImage';
 import { BellTabIcon, CheckIcon, ChevronIcon, FamilyTabIcon, InfoIcon, PersonSilhouette, PinIcon, WarningIcon } from '../../components/common/Icons';
 import { getNotifications, markNotificationsRead } from '../../services/notifications';
 import { getMyInvitations } from '../../services/invitations';
+import { describeInvitation } from '../../utils/invitationText';
 import { alertPhotoUrl } from '../../services/alerts';
 
 const pad = (n) => String(n).padStart(2, '0');
@@ -85,18 +86,19 @@ function Row({ n, onPress }) {
 
 // A pending family invitation (they are not stored as notifications).
 function InvitationRow({ inv, onPress }) {
+  const { title, message } = describeInvitation(inv);
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [styles.row, styles.rowUnread, styles.rowInvite, pressed && { opacity: 0.85 }]}
       accessibilityRole="button"
-      accessibilityLabel={`Family invitation to ${inv.group_name} from ${inv.invited_by}. Open to accept or decline`}
+      accessibilityLabel={`${title}. ${message} Open to accept or decline`}
     >
       <View style={[styles.photo, styles.inviteIcon]}><FamilyTabIcon size={26} active /></View>
       <View style={styles.flex}>
-        <Text style={[styles.title, styles.titleUnread]} numberOfLines={1}>Family invitation</Text>
+        <Text style={[styles.title, styles.titleUnread]} numberOfLines={1}>{title}</Text>
         <Text style={styles.message} numberOfLines={2}>
-          {inv.invited_by} invited you to join {inv.group_name}. Tap to accept or decline.
+          {message} Tap to accept or decline.
         </Text>
       </View>
       <ChevronIcon color={colors.blue} />
@@ -154,7 +156,7 @@ export default function NotificationsScreen({ onOpenAlert, onUnreadChange, onOpe
 
   const sections = [];
   if (invitations.length) {
-    sections.push({ title: 'FAMILY INVITATIONS', data: invitations.map((inv) => ({ ...inv, kind: 'invitation' })) });
+    sections.push({ title: invitations.some((inv) => inv.with_responsibility) ? 'INVITATIONS AND REQUESTS' : 'FAMILY INVITATIONS', data: invitations.map((inv) => ({ ...inv, kind: 'invitation' })) });
   }
   for (const n of data?.notifications || []) {
     const title = sectionTitle(new Date(n.created_at));

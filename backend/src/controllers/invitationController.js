@@ -139,10 +139,12 @@ async function create(req, res) {
             member_ids: memberIds,
         });
 
+        // Phone notifications show on the lock screen, so they say what the request is for
+        // but name no one (the names are shown inside the app).
         if (method === "member") {
             pushService.sendToUsers([target], {
                 title: "Shared responsibility",
-                body: "A family administrator asks you to share the responsibility to report family members. Open LocalAlert to respond.",
+                body: "You are asked to share the responsibility to report family members missing. Open LocalAlert to accept or decline.",
                 data: { type: "invitation" },
             }).catch(() => {});
             return res.status(201).json({
@@ -176,11 +178,11 @@ async function create(req, res) {
         Invitation.findInvitedUserIds(inviteEmail, invitePhone, req.user.id)
             .then((ids) => pushService.sendToUsers(ids, withResponsibility ? {
                 title: "Shared responsibility",
-                body: "A family administrator asks you to join their family and share the responsibility to report family members. Open LocalAlert to respond.",
+                body: "You are invited to join a family group and share the responsibility to report family members missing. Open LocalAlert to accept or decline.",
                 data: { type: "invitation" },
             } : {
                 title: "Family invitation",
-                body: "A family administrator has invited you to their family group. Open LocalAlert to accept.",
+                body: "A family administrator has invited you to their family group. Open LocalAlert to accept or decline.",
                 data: { type: "invitation" },
             }))
             .catch((error) => console.error("[push] invitation notice failed:", error.message));

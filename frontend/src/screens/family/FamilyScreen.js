@@ -86,13 +86,13 @@ function initials(m) {
 
 // Administrators manage their family group; everyone else sees the families they are linked to.
 // invitations: number of pending family invitations; openInvitations changes to open them.
-export default function FamilyScreen({ user, onFullScreen, invitations = 0, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
-  const props = { onFullScreen, invitations, openInvitations, onInvitationsChanged, onResponsibilityChanged };
+export default function FamilyScreen({ user, onFullScreen, invitations = 0, invitationList, openInvitations, onInvitationsChanged, onResponsibilityChanged }) {
+  const props = { onFullScreen, invitations, invitationList, openInvitations, onInvitationsChanged, onResponsibilityChanged };
   if (user?.role !== 'Family Administrator') return <LinkedFamilyScreen {...props} />;
   return <AdminFamilyScreen {...props} />;
 }
 
-function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvitationsChanged }) {
+function AdminFamilyScreen({ onFullScreen, invitations, invitationList, openInvitations, onInvitationsChanged }) {
   const insets = useSafeAreaInsets();
   const [data, setData] = useState(null); // { group, profiles, members }
   const [loading, setLoading] = useState(true);
@@ -294,7 +294,7 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
         <ScreenHeader title="Family Link" />
         <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView contentContainerStyle={styles.createContent} keyboardShouldPersistTaps="handled">
-          <InvitationsCard count={invitations} onOpen={() => join(true)} />
+          <InvitationsCard count={invitations} list={invitationList} onOpen={() => join(true)} />
           <View style={styles.illustration}><FamilyTabIcon size={44} active /></View>
           <Text style={styles.heading}>Create your family group</Text>
           <Text style={styles.body}>
@@ -329,7 +329,7 @@ function AdminFamilyScreen({ onFullScreen, invitations, openInvitations, onInvit
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.blue} colors={[colors.blue]} />}
       >
-        <InvitationsCard count={invitations} onOpen={() => join(true)} />
+        <InvitationsCard count={invitations} list={invitationList} onOpen={() => join(true)} />
 
         {error ? (
           <View style={styles.errorBox} accessibilityRole="alert">
